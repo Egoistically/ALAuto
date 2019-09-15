@@ -17,4 +17,4 @@ Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 1080p.
 
 ## Relevant information
 Although it works fine (or at least should), code can be improved a lot and some features are still to be added.  
-If you'd like to contribute in any way make sure to open a [pull request](https://github.com/Egoistically/ALAuto/pulls). You can also open an [issue](https://github.com/Egoistically/ALAuto/issues) and I'll try to check it out as soon as possible.
+If you'd like to contribute in any way make sure to open a [pull request](https://github.com/Egoistically/ALAuto/pulls) or an [issue](https://github.com/Egoistically/ALAuto/issues).
