@@ -40,7 +40,7 @@ class CommissionModule(object):
                 Logger.log_msg("Found commission completed alert.")
                 Utils.touch_randomly(self.region["left_menu"])
                 continue
-            if (lambda x:x[0] > 332 and x[0] < 511)(Utils.find("commission_complete")):
+            if Utils.find("commission_complete") and (lambda x:x > 332 and x < 511)(Utils.find("commission_complete").y):
                 Utils.touch_randomly(self.region["collect_oil"])
                 Utils.touch_randomly(self.region["collect_gold"])
                 Utils.touch_randomly(self.region["complete_commission"])

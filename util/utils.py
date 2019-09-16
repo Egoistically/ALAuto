@@ -31,6 +31,7 @@ tlocations = []
 class Utils(object):
 
     DEFAULT_SIMILARITY = 0.95
+    locations = ()
 
     @staticmethod
     def multithreader(threads):
@@ -110,34 +111,28 @@ class Utils(object):
         Returns:
             array: Array of all coordinates where the image appears
         """
+        del cls.locations
         template = cv2.imread('assets/{}.png'.format(image), 0)
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-        locations = numpy.where(match >= similarity)
+        cls.locations = numpy.where(match >= similarity)
 
         pool = ThreadPool(processes=2)
         count = 0.85
 
-        while (count < 1.10):
+        while not cls.locations and (count < 1.10):
             result = pool.apply_async(cls.match_resize, (template, count, similarity))
             cls.script_sleep(0.01)
             count += 0.01
 
-        if tlocations != []:
-            numpy.append(locations, tlocations)
-
-        if locations:
-            #print(locations)
-            pool.close()
-            return cls.filter_similar_coords(
-                list(zip(locations[1], locations[0])))
-        return None
+        pool.close()
+        return cls.filter_similar_coords(
+            list(zip(cls.locations[1], cls.locations[0])))
 
     @classmethod
     def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_CUBIC)
         match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
-        numpy.append(tlocations, numpy.where(match_resize >= similarity))
-        #print(tlocations)
+        numpy.append(cls.locations, numpy.where(match_resize >= similarity))
 
     @classmethod
     def touch(cls, coords):
