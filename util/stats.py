@@ -84,7 +84,7 @@ class Stats(object):
         Logger.log_success("Recoveries done: {}".format(self.recoveries))
 
         Logger.log_success(
-            "azurlane-auto has been running for {} (started on {})".format(
+            "ALAuto has been running for {} (started on {})".format(
                 self._pretty_timedelta(delta),
                 self.start_time.strftime('%Y-%m-%d %H:%M:%S')))
 

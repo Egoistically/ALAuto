@@ -198,7 +198,7 @@ class CombatModule(object):
             if Utils.find("combat_retreat"):
                 Utils.touch_randomly(Region(1130, 985, 243, 60))
                 continue
-            if Utils.find("combat_com_confirm"):
+            if Utils.find("commission_confirm"):
                 Utils.touch_randomly(Region(1065, 732, 235, 68))
                 continue
             if Utils.find("map_hard_mode"):
@@ -274,6 +274,7 @@ class CombatModule(object):
         sim = 0.99
         if blacklist != []:
             Logger.log_msg('Blacklist: ' + str(blacklist))
+            self.l = [x for x in self.l if (x not in blacklist)]
 
         while self.l == []:
             Utils.update_screen()
@@ -354,12 +355,12 @@ class CombatModule(object):
         """
         while True: 
             fleet_location = self.get_fleet_location()
-            enemies = self.get_enemies(self.blacklist)
+            enemies = self.get_enemies(blacklist)
             closest = enemies[Utils.find_closest(enemies, fleet_location)[1]]
 
-            Logger.log_msg('Current location is: {}'.format(fleet_location))
-            Logger.log_msg('Enemies found at: {}'.format(enemies))
-            Logger.log_msg('Closest enemy is at {}'.format(closest))
+            Logger.log_info('Current location is: {}'.format(fleet_location))
+            Logger.log_info('Enemies found at: {}'.format(enemies))
+            Logger.log_info('Closest enemy is at {}'.format(closest))
 
             if closest in self.l:
                 x = self.l.index(closest)

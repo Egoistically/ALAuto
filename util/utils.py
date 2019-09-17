@@ -26,7 +26,6 @@ class Region(object):
         cls.h = h
 
 screen = None
-tlocations = []
 
 class Utils(object):
 
@@ -119,7 +118,7 @@ class Utils(object):
         pool = ThreadPool(processes=2)
         count = 0.85
 
-        while not cls.locations and (count < 1.10):
+        while len(cls.locations[0] < 2) and (count < 1.10):
             result = pool.apply_async(cls.match_resize, (template, count, similarity))
             cls.script_sleep(0.01)
             count += 0.01
