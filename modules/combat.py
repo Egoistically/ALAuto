@@ -159,12 +159,7 @@ class CombatModule(object):
                 return
             else:
                 if count % 3 == 0:
-                    if count > 24:
-                        Utils.swipe(960, 540, 960, 540 + 150 + count * 5, 100)
-                        Utils.touch(location)
-                        Utils.swipe(960, 540 + 150 + count * 5, 960, 540, 100)
-                    else:
-                        Utils.touch(location)
+                    Utils.touch(location)
                 count += 1
 
     def unable_handler(self, coords):
@@ -218,6 +213,7 @@ class CombatModule(object):
     def clear_map(self):
         Logger.log_msg("Started map clear.")
         Utils.script_sleep(2.5)
+        Utils.touch_randomly(Region(1617, 593, 4, 146))
         enemy_coords = self.get_closest_enemy(self.blacklist)
 
         while True:
@@ -255,6 +251,7 @@ class CombatModule(object):
                 self.battle_handler()
 
                 Utils.script_sleep(3)
+                Utils.touch_randomly(Region(1617, 593, 4, 146))
                 self.blacklist.clear()
                 continue
 
@@ -296,7 +293,7 @@ class CombatModule(object):
             l1 = [x for x in l1 if (x not in blacklist)]
             l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_1_down', sim)))
             l2 = [x for x in l2 if (x not in blacklist)]
-            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_2_down', sim)))
+            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_2_down', sim - 0.02)))
             l3 = [x for x in l3 if (x not in blacklist)]
             l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy_fleet_3_up', sim - 0.06)))
             l4 = [x for x in l4 if (x not in blacklist)]

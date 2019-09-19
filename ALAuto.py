@@ -125,7 +125,7 @@ while True:
     Utils.update_screen()
     
     # temporal solution to event alerts
-    if Utils.find("map_hard_mode") or not Utils.find("menu_battle"):
+    if Utils.find("map_hard_mode") or not Utils.find("menu_battle", 0.9):
         Utils.touch_randomly(Region(54, 57, 67, 67))
         continue
     if Utils.find("commission_indicator"):
