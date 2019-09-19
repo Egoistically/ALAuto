@@ -118,7 +118,7 @@ class Utils(object):
         pool = ThreadPool(processes=2)
         count = 0.85
 
-        while len(cls.locations[0] < 2) and (count < 1.10):
+        while (len(cls.locations[0]) < 1) and (count < 1.10):
             result = pool.apply_async(cls.match_resize, (template, count, similarity))
             cls.script_sleep(0.01)
             count += 0.01
@@ -382,14 +382,14 @@ class Utils(object):
         Returns:
             array: An array containing the filtered coordinates.
         """
-        #print("c " + str(coords))
+        Logger.log_debug("Coords: " + str(coords))
         filtered_coords = []
         if len(coords) > 0:
             filtered_coords.append(coords[0])
             for coord in coords:
                 if cls.find_closest(filtered_coords, coord)[0] > 40:
                     filtered_coords.append(coord)
-        #print("fc " + str(filtered_coords))
+        Logger.log_debug("Filtered Coords: " + str(filtered_coords))
         return filtered_coords
 
     @staticmethod

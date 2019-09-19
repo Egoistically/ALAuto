@@ -36,7 +36,7 @@ class CombatModule(object):
         the entire action of sortieing combat fleets and resolving combat.
 
         Returns:
-            bool: True if the combat cycle was complete
+            int: 1 if boss was defeated, 2 if morale is too low and 3 if dock is full.
         """
         finished = False
         self.exit = 0
@@ -47,30 +47,30 @@ class CombatModule(object):
             Utils.update_screen()
 
             if Utils.find("menu_sort_button"):
-                #Logger.log_error("I should kill myself.")
-                exit
+                Utils.touch_randomly(Region(1312, 263, 64, 56))
+                self.exit = 3
             if Utils.find("commission_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
             if Utils.find("menu_battle"):
-                #Logger.log_msg("Found menu battle button.")
+                Logger.log_debug("Found menu battle button.")
                 Utils.touch_randomly(self.region["menu_button_battle"])
                 Utils.script_sleep(0.5)
                 continue
-            if Utils.find_and_touch('map_{}'.format(self.chapter_map), 0.99):
+            if Utils.find_and_touch('/maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
                 continue
             if Utils.find("map_select_fleet"):
-                #Logger.log_msg("Found fleet select go button.")
+                Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
                 continue
             if Utils.find("map_summary_go"):
-                #Logger.log_msg("Found map summary go button.")
+                Logger.log_debug("Found map summary go button.")
                 Utils.touch_randomly(self.region["map_summary_go"])
                 continue
             if Utils.find("combat_retreat"):
-                #Logger.log_msg("Found retreat button, starting clear function.")
+                Logger.log_debug("Found retreat button, starting clear function.")
                 self.clear_map()
             if self.exit == 1:
                 Logger.log_msg("Boss successfully defeated, going back to menu.")
@@ -79,6 +79,10 @@ class CombatModule(object):
                 continue
             if self.exit == 2:
                 Logger.log_error("Mood too low, retreating and sleeping.")
+                finished = True
+                continue
+            if self.exit == 3:
+                Logger.log_warning("Dock is full, need to retire.")
                 finished = True
                 continue
 
@@ -99,18 +103,15 @@ class CombatModule(object):
         while True:
             Utils.update_screen()
             
-            if Utils.find("menu_mood_low"):
+            if Utils.find("menu_mood_low") or Utils.find("menu_sort_button"):
                 self.retreat_handler()
                 return
-            if Utils.find("menu_sort_button"):
-                self.run_retirement()
-                continue
             if Utils.find("commission_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
             if Utils.find("combat_pause", 0.7):
-                #Logger.log_msg("In battle.")
+                Logger.log_debug("In battle.")
                 Utils.script_sleep(5)
                 continue
             if Utils.find("combat_touch_to_continue"):
@@ -158,11 +159,16 @@ class CombatModule(object):
                 return
             else:
                 if count % 3 == 0:
-                    Utils.touch(location)
+                    if count > 24:
+                        Utils.swipe(960, 540, 960, 540 + 150 + count * 5, 100)
+                        Utils.touch(location)
+                        Utils.swipe(960, 540 + 150 + count * 5, 960, 540, 100)
+                    else:
+                        Utils.touch(location)
                 count += 1
 
     def unable_handler(self, coords):
-        Logger.log_msg("Unable to reach boss.")
+        Logger.log_msg("Unable to reach boss function started.")
         enemy_coords = self.get_enemies(self.blacklist)
         closest_to_boss = enemy_coords[Utils.find_closest(enemy_coords, coords)[1]]
 
@@ -191,6 +197,11 @@ class CombatModule(object):
 
             if Utils.find("menu_mood_low"):
                 Utils.touch_randomly(Region(613, 731, 241, 69))
+                self.exit = 2
+                continue
+            if Utils.find("menu_sort_button"):
+                Utils.touch_randomly(Region(1312, 263, 64, 56))
+                self.exit = 3
                 continue
             if Utils.find("menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
@@ -202,18 +213,21 @@ class CombatModule(object):
                 Utils.touch_randomly(Region(1065, 732, 235, 68))
                 continue
             if Utils.find("map_hard_mode"):
-                self.exit = 2
                 return
 
     def clear_map(self):
-        #Logger.log_msg("Started clear map function.")
+        Logger.log_msg("Started map clear.")
         Utils.script_sleep(2.5)
         enemy_coords = self.get_closest_enemy(self.blacklist)
 
         while True:
             Utils.update_screen()
 
-            if self.exit == 1 or self.exit == 2:
+            if Utils.find("combat_battle_failed"):
+                Logger.log_warning("Failed to defeat enemy.")
+                Utils.touch_randomly(Region(869, 741, 185, 48))
+                return
+            if self.exit is not 0:
                 return
             if Utils.find("commission_confirm"):
                 Logger.log_msg("Found commission info message.")
@@ -228,7 +242,6 @@ class CombatModule(object):
                 enemy_coords = self.get_closest_enemy(self.blacklist)
                 continue
             if enemy_coords:
-                Logger.log_msg("Navigating to enemy.")
                 Utils.touch(enemy_coords)
                 Utils.update_screen()
             if Utils.find("combat_unable_reach", 0.8):
@@ -246,14 +259,14 @@ class CombatModule(object):
                 continue
 
     def clear_boss(self, coords):
-        #Logger.log_msg("Started boss function.")
+        Logger.log_debug("Started boss function.")
         boss_coords = [coords.x + 50, coords.y + 25]
 
         self.l.clear()
         self.blacklist.clear()
-        Utils.touch(boss_coords)
 
         while True:
+            Utils.touch(boss_coords)
             Utils.update_screen()
 
             if Utils.find("combat_unable_reach", 0.8):
@@ -273,7 +286,7 @@ class CombatModule(object):
     def get_enemies(self, blacklist=[]):
         sim = 0.99
         if blacklist != []:
-            Logger.log_msg('Blacklist: ' + str(blacklist))
+            Logger.log_info('Blacklist: ' + str(blacklist))
             self.l = [x for x in self.l if (x not in blacklist)]
 
         while self.l == []:

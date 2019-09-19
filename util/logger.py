@@ -7,6 +7,8 @@ import subprocess
 
 class Logger(object):
 
+    debug = False
+
     if platform.system().lower() == 'windows':
         subprocess.call('', shell=True)
 
@@ -14,7 +16,14 @@ class Logger(object):
     CLR_SUCCESS = '\033[92m'
     CLR_WARNING = '\033[93m'
     CLR_ERROR = '\033[91m'
+    CLR_INFO = '\u001b[35m'
     CLR_END = '\033[0m'
+
+    def enable_debugging(cls):
+        """Method to enable debugging logs.
+        """
+        cls.debug = True
+        return
 
     @staticmethod
     def log_format(msg):
@@ -70,3 +79,26 @@ class Logger(object):
         """
         print("{}{}{}".format(
             cls.CLR_ERROR, cls.log_format(msg), cls.CLR_END))
+
+    @classmethod
+    def log_info(cls, msg):
+        """Method to print a log message to the console, with the 'info'
+        colors
+
+        Args:
+            msg (string): log msg
+        """
+        print("{}{}{}".format(
+        cls.CLR_INFO, cls.log_format(msg), cls.CLR_END))
+
+    @classmethod
+    def log_debug(cls, msg):
+        """Method to print a debug message to the console, with the 'msg'
+        colors
+
+        Args:
+            msg (string): log msg
+        """
+        if not cls.debug: return
+        print("{}".format(
+        cls.log_format(msg)))

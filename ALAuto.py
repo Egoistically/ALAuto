@@ -45,10 +45,23 @@ class ALAuto(object):
         """Method to run the combat cycle.
         """
         if self.modules['combat']:
-            if self.modules['combat'].combat_logic_wrapper() == 2:
+            result = self.modules['combat'].combat_logic_wrapper()
+
+            if result == 1:
+                # if boss is defeated
+                self.print_stats_check = True
+            if result == 2:
+                # if morale is too low
                 self.next_combat = datetime.now() + timedelta(hours=1)
-                #Logger.log_warning("Worked?")
-            self.print_stats_check = True
+            if result == 3:
+                # if dock is full
+                if self.modules['retirement']:
+                    self.modules['retirement'].retirement_logic_wrapper(True)
+                else:
+                    Logger.log_error("Retirement isn't enabled, exiting.")
+                    sys.exit()
+        else: 
+            self.next_combat = 0
 
     def run_commission_cycle(self):
         """Method to run the expedition cycle.
@@ -84,18 +97,19 @@ parser.add_argument('-c', '--config',
                     metavar=('CONFIG_FILE'),
                     help='Use the specified configuration file instead ' +
                          'of the default config.ini')
-parser.add_argument('-d', '--debug', nargs=2,
-                    metavar=('IMAGE_FILE', 'SIMILARITY'),
-                    help='Finds the specified image on the screen at ' +
-                         'the specified similarity')
-parser.add_argument('--copyright',)
+parser.add_argument('-d', '--debug',
+                    help='Enables debugging logs.', action='store_true')
 args = parser.parse_args()
 
+config = Config('config.ini')
+
 # check args, and if none provided, load default config
-if args and args.config:
-    config = Config(args.config)
-else:
-    config = Config('config.ini')
+if args:
+    if args.config:
+        config = Config(args.config)
+    if args.debug:
+        Logger.log_info("Enabled debugging.")
+        Logger.enable_debugging(Logger)
 
 script = ALAuto(config)
 
@@ -114,20 +128,16 @@ while True:
     if Utils.find("map_hard_mode") or not Utils.find("menu_battle"):
         Utils.touch_randomly(Region(54, 57, 67, 67))
         continue
-    if script.modules['commissions'] and Utils.find("commission_indicator"):
+    if Utils.find("commission_indicator"):
         script.run_commission_cycle()
         script.print_cycle_stats()
-        continue
-    if script.modules['missions'] and Utils.find("mission_indicator"):
+    if Utils.find("mission_indicator"):
         script.run_mission_cycle()
-        continue
-    if script.modules['combat'] and script.next_combat < datetime.now():
+    if script.next_combat != 0 and script.next_combat < datetime.now():
         script.run_combat_cycle()
-        script.print_cycle_stats()
-    if script.modules['retirement']:
         script.run_retirement_cycle()
-        continue
+        script.print_cycle_stats()
     else:
-        Logger.log_msg("Nothing to do, sleeping.")
-        Utils.script_sleep(60)
+        Logger.log_msg("Nothing to do, will check again in 5 minutes.")
+        Utils.script_sleep(300)
         continue

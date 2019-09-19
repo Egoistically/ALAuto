@@ -43,7 +43,7 @@ class Config(object):
         self.retirement['enabled'] = config.getboolean('Retirement', 'Enabled')
         self.validate()
         if (self.ok and not self.initialized):
-            Logger.log_msg("Starting azurlane-auto!")
+            Logger.log_msg("Starting ALAuto!")
             self.initialized = True
             self.changed = True
         elif (not self.ok and not self.initialized):

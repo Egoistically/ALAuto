@@ -41,6 +41,7 @@ class CommissionModule(object):
                 Utils.touch_randomly(self.region["left_menu"])
                 continue
             if Utils.find("commission_complete") and (lambda x:x > 332 and x < 511)(Utils.find("commission_complete").y):
+                Logger.log_debug("Found commission complete button.")
                 Utils.touch_randomly(self.region["collect_oil"])
                 Utils.touch_randomly(self.region["collect_gold"])
                 Utils.touch_randomly(self.region["complete_commission"])
@@ -55,6 +56,7 @@ class CommissionModule(object):
                 Utils.script_sleep(1)
                 continue
             if Utils.find("menu_available"):
+                Logger.log_debug("Found commission available indicator.")
                 Utils.touch_randomly(self.region["button_go"])
                 continue
             if Utils.find("menu_go"): 
@@ -71,6 +73,7 @@ class CommissionModule(object):
                     self.stats.increment_commissions_started()
                     continue
                 if Utils.find("commission_confirm"):
+                    Logger.log_debug("Found commission oil warning message.")
                     Utils.touch_randomly(self.region["oil_warning"])
                     continue
                 if Utils.find("commission_full"):
@@ -79,9 +82,11 @@ class CommissionModule(object):
                     Utils.script_sleep(1)
                     break
                 if Utils.find("commission_start"):
+                    Logger.log_debug("Found commission start button.")
                     Utils.touch_randomly(self.region["commission_start"])
                     continue
                 if Utils.find("commission_recommend"):
+                    Logger.log_debug("Found commission recommend button.")
                     Utils.touch_randomly(self.region["commission_recommend"])
                     continue
 
@@ -99,4 +104,4 @@ class CommissionModule(object):
                 else:
                     Utils.swipe(960, 680, 960, 400, 80)
                     Utils.touch_randomly(self.region["last_commission"])
-                    #Logger.log_msg("Found status indicator on commission.")
+                    Logger.log_debug("Found status indicator on commission.")

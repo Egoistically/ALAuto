@@ -15,15 +15,22 @@ class RetirementModule(object):
         self.stats = stats
         self.retirement = self.config.retirement['enabled']
         self.sorted = False
+        self.last_retire = 0
 
-    def retirement_logic_wrapper(self):
+    def retirement_logic_wrapper(self, forced=False):
         """Method that fires off the necessary child methods that encapsulates
         the entire action filtering and retiring ships
+
+        Args:
+            forced: Forces retirement to start even if need_to_retire returns False.
         """
 
         #if self.retirement is 'Enhancement':
             #do stuff
-        if self.retirement:
+        if self.need_to_retire or forced is True:
+            self.last_retire = self.stats.combat_done
+            Logger.log_msg("Opening build menu to retire ships.")
+
             while True:
                 Utils.update_screen()
                 
@@ -34,8 +41,6 @@ class RetirementModule(object):
                     continue
                 # In case function is called from menu
                 if Utils.find("menu_battle"):
-                    if not self.need_to_retire:
-                        return
                     Utils.touch_randomly(Region(1452, 1007, 198, 52))
                     Utils.script_sleep(2)
                     continue
@@ -120,4 +125,6 @@ class RetirementModule(object):
         Returns:
             bool: True if the script needs to retire ships
         """
-        return self.stats.combat_done % int(self.config.combat['retire_cycle']) == 0
+        # check if it has already retired with current combat count so it doesn't enter a loop
+        if self.stats.combat_done > self.last_retire:
+            return self.stats.combat_done % int(self.config.combat['retire_cycle']) == 0

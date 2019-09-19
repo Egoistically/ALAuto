@@ -50,5 +50,5 @@ class Adb(object):
             args (string): Command to execute.
         """
         cmd = ['adb', 'shell'] + args.split(' ')
-        #print(str(cmd))
+        Logger.log_debug(str(cmd))
         subprocess.call(cmd, shell=True)
