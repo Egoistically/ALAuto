@@ -24,5 +24,5 @@ Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 60fps. If it does 
 
 Check the [Wiki](https://github.com/Egoistically/ALAuto/wiki/Config.ini-and-Modules-explanation) for more information. It's my first time making one, don't mind me.  
 
-Although it works fine (or at least should), code can be improved and some features are still to be added.  
+This was made for my own usage, it is far from good and I'm very aware of it. I am posting this because it might be useful to someone, that's all.  
 If you'd like to contribute in any way make sure to open a [pull request](https://github.com/Egoistically/ALAuto/pulls) or an [issue](https://github.com/Egoistically/ALAuto/issues).
