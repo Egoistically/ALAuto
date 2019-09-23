@@ -36,56 +36,56 @@ class CommissionModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("commission_indicator"):
+            if Utils.find("commission/alert_completed"):
                 Logger.log_msg("Found commission completed alert.")
                 Utils.touch_randomly(self.region["left_menu"])
                 continue
-            if Utils.find("commission_complete") and (lambda x:x > 332 and x < 511)(Utils.find("commission_complete").y):
+            if Utils.find("commission/button_completed") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_completed").y):
                 Logger.log_debug("Found commission complete button.")
                 Utils.touch_randomly(self.region["collect_oil"])
                 Utils.touch_randomly(self.region["collect_gold"])
                 Utils.touch_randomly(self.region["complete_commission"])
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("commission_perfect"):
+            if Utils.find("commission/alert_perfect"):
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 self.stats.increment_commissions_received()
                 continue
-            if Utils.find("item_found"):
+            if Utils.find("menu/item_found"):
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("menu_available"):
+            if Utils.find("commission/alert_available") and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available").y):
                 Logger.log_debug("Found commission available indicator.")
                 Utils.touch_randomly(self.region["button_go"])
                 continue
-            if Utils.find("menu_go"): 
+            if Utils.find("commission/button_go"): 
                 Logger.log_msg("All commissions are running.")
-                Utils.touch_randomly(Region(900, 19, 900, 1039))
+                Utils.touch_randomly(Region(970, 148, 370, 784))
                 return True
-            while Utils.find("menu_commission"):
+            while Utils.find("menu/commission"):
                 Utils.update_screen() 
 
-                if Utils.find("commission_begun"):
+                if Utils.find("commission/alert_begun"):
                     Logger.log_msg("Successfully started commission.")
                     Utils.touch_randomly(Region(688, 11, 538, 55))
                     Utils.script_sleep(1)
                     self.stats.increment_commissions_started()
                     continue
-                if Utils.find("commission_confirm"):
+                if Utils.find("commission/button_confirm"):
                     Logger.log_debug("Found commission oil warning message.")
                     Utils.touch_randomly(self.region["oil_warning"])
                     continue
-                if Utils.find("commission_full"):
+                if Utils.find("commission/commissions_full"):
                     Logger.log_msg("No more commissions to start.")
                     Utils.touch_randomly(self.region["button_back"])
                     Utils.script_sleep(1)
                     break
-                if Utils.find("commission_start"):
+                if Utils.find("commission/button_complete"):
                     Logger.log_debug("Found commission start button.")
                     Utils.touch_randomly(self.region["commission_start"])
                     continue
-                if Utils.find("commission_recommend"):
+                if Utils.find("commission/button_recommend"):
                     Logger.log_debug("Found commission recommend button.")
                     Utils.touch_randomly(self.region["commission_recommend"])
                     continue
@@ -94,7 +94,7 @@ class CommissionModule(object):
                     Utils.touch_randomly(self.region["urgent_tab"])
                     Utils.update_screen()
 
-                    if Utils.find_and_touch("commission_status"):
+                    if Utils.find_and_touch("commission/commission_status"):
                         Logger.log_msg("Found status indicator on urgent commission.")
                     else: 
                         Utils.script_sleep()

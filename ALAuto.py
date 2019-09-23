@@ -2,6 +2,7 @@ import sys
 import argparse
 from modules.combat import CombatModule
 from modules.commission import CommissionModule
+from modules.enhancement import EnhancementModule
 from modules.mission import MissionModule
 from modules.retirement import RetirementModule
 from datetime import datetime, timedelta
@@ -16,6 +17,7 @@ class ALAuto(object):
     modules = {
         'combat': None,
         'commissions': None,
+        'enhancement': None,
         'missions': None,
         'retirement': None
     }
@@ -34,6 +36,8 @@ class ALAuto(object):
             self.modules['combat'] = CombatModule(self.config, self.stats)
         if self.config.commissions['enabled']:
             self.modules['commissions'] = CommissionModule(self.config, self.stats)
+        if self.config.enhancement['enabled']:
+            self.modules['enhancement'] = EnhancementModule(self.config, self.stats)
         if self.config.missions['enabled']:
             self.modules['missions'] = MissionModule(self.config, self.stats)
         if self.config.retirement['enabled']:
@@ -53,6 +57,7 @@ class ALAuto(object):
             if result == 2:
                 # if morale is too low
                 self.next_combat = datetime.now() + timedelta(hours=1)
+                self.print_stats_check = False
             if result == 3:
                 # if dock is full
                 if self.modules['retirement']:
@@ -68,6 +73,13 @@ class ALAuto(object):
         """
         if self.modules['commissions']:
             if self.modules['commissions'].commission_logic_wrapper():
+                self.print_stats_check = True
+
+    def run_enhancement_cycle(self):
+        """Method to run the enhancement cycle.
+        """
+        if self.modules['enhancement']:
+            if self.modules['enhancement'].enhancement_logic_wrapper():
                 self.print_stats_check = True
 
     def run_mission_cycle(self):
@@ -125,16 +137,17 @@ while True:
     Utils.update_screen()
     
     # temporal solution to event alerts
-    if Utils.find("map_hard_mode") or not Utils.find("menu_battle", 0.9):
+    if Utils.find("menu/button_hard_mode") or not Utils.find("menu/button_battle", 0.9):
         Utils.touch_randomly(Region(54, 57, 67, 67))
         continue
-    if Utils.find("commission_indicator"):
+    if Utils.find("commission/alert_completed"):
         script.run_commission_cycle()
         script.print_cycle_stats()
-    if Utils.find("mission_indicator"):
+    if Utils.find("mission/alert_completed"):
         script.run_mission_cycle()
     if script.next_combat != 0 and script.next_combat < datetime.now():
         script.run_combat_cycle()
+        script.run_enhancement_cycle()
         script.run_retirement_cycle()
         script.print_cycle_stats()
     else:

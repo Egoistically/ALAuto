@@ -1,8 +1,8 @@
 import math
 from util.logger import Logger
 from util.utils import Region, Utils
-from modules.retirement import RetirementModule
 from scipy import spatial
+from threading import Thread
 
 class CombatModule(object):
 
@@ -19,6 +19,7 @@ class CombatModule(object):
         self.exit = 0
         self.l = []
         self.blacklist = []
+        self.movement_event = {}
         self.chapter_map = self.config.combat['map']
         self.region = {
             'menu_button_battle': Region(1517, 442, 209, 206),
@@ -46,30 +47,30 @@ class CombatModule(object):
         while finished == False:
             Utils.update_screen()
 
-            if Utils.find("menu_sort_button"):
+            if Utils.find("menu/button_sort"):
                 Utils.touch_randomly(Region(1312, 263, 64, 56))
                 self.exit = 3
-            if Utils.find("commission_confirm"):
+            if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
-            if Utils.find("menu_battle"):
+            if Utils.find("menu/button_battle"):
                 Logger.log_debug("Found menu battle button.")
                 Utils.touch_randomly(self.region["menu_button_battle"])
                 Utils.script_sleep(0.5)
                 continue
-            if Utils.find_and_touch('/maps/map_{}'.format(self.chapter_map), 0.99):
+            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
                 continue
-            if Utils.find("map_select_fleet"):
+            if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
                 continue
-            if Utils.find("map_summary_go"):
+            if Utils.find("combat/button_go"):
                 Logger.log_debug("Found map summary go button.")
                 Utils.touch_randomly(self.region["map_summary_go"])
                 continue
-            if Utils.find("combat_retreat"):
+            if Utils.find("combat/button_retreat"):
                 Logger.log_debug("Found retreat button, starting clear function.")
                 self.clear_map()
             if self.exit == 1:
@@ -78,7 +79,7 @@ class CombatModule(object):
                 finished = True
                 continue
             if self.exit == 2:
-                Logger.log_error("Mood too low, retreating and sleeping.")
+                Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
                 finished = True
                 continue
             if self.exit == 3:
@@ -90,7 +91,7 @@ class CombatModule(object):
         Utils.touch_randomly(self.region["menu_nav_back"])
 
         Utils.update_screen()
-        if not Utils.find("menu_battle"):
+        if not Utils.find("menu/button_battle"):
             Utils.touch_randomly(self.region["menu_nav_back"])
 
         return self.exit
@@ -103,33 +104,37 @@ class CombatModule(object):
         while True:
             Utils.update_screen()
             
-            if Utils.find("menu_mood_low") or Utils.find("menu_sort_button"):
+            if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
                 self.retreat_handler()
                 return
-            if Utils.find("commission_confirm"):
+            if Utils.find("combat/alert_lock"):
+                Logger.log_msg("Locking received ship.")
+                Utils.touch_randomly(Region(1086, 739, 200, 55))
+                continue
+            if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
-            if Utils.find("combat_pause", 0.7):
+            if Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
                 Utils.script_sleep(5)
                 continue
-            if Utils.find("combat_touch_to_continue"):
+            if Utils.find("combat/menu_touch2continue"):
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 continue
-            if Utils.find("item_found"):
+            if Utils.find("menu/item_found"):
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("drop_ssr"):
+            if Utils.find("menu/drop_ssr"):
                 Logger.log_msg("Received SSR ship as drop.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
-            if Utils.find("drop_elite"):
+            if Utils.find("menu/drop_elite"):
                 Logger.log_msg("Received ELITE ship as drop.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
-            if Utils.find("combat_confirm"):
+            if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
                 Utils.touch_randomly(self.region["combat_end_confirm"])
                 Utils.script_sleep(1)
@@ -141,41 +146,57 @@ class CombatModule(object):
 
         while True:
             Utils.update_screen()
+            event = self.check_movement_threads()
 
-            if Utils.find("combat_ambush_evade"):
+            if event["combat/button_evade"]:
                 Logger.log_msg("Ambush was found, trying to evade.")
                 Utils.touch_randomly(self.region["combat_ambush_evade"])
                 continue
-            if Utils.find("combat_ambush_failed"):
+            if event["combat/alert_failed_evade"]:
                 Logger.log_warning("Failed to evade ambush.")
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 self.battle_handler()
                 continue
-            if Utils.find("item_found"):
+            if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 continue
-            if Utils.find("menu_formation"):
+            if event["combat/menu_formation" ]:
                 return
             else:
                 if count % 3 == 0:
                     Utils.touch(location)
+                if count > 21:
+                    Logger.log_msg("Blacklisting location and searching for another enemy.")
+                    self.blacklist.append(location)
+                    self.l.clear()
+
+                    location = self.get_closest_enemy(self.blacklist)
+                    count = 0
                 count += 1
 
     def unable_handler(self, coords):
         Logger.log_msg("Unable to reach boss function started.")
-        enemy_coords = self.get_enemies(self.blacklist)
-        closest_to_boss = enemy_coords[Utils.find_closest(enemy_coords, coords)[1]]
+        closest_to_boss = self.get_closest_enemy(self.blacklist, coords)
 
         Utils.touch(closest_to_boss)
         Utils.script_sleep(1)
         Utils.update_screen()
 
-        if Utils.find("combat_unable_reach"):
+        if Utils.find("combat/alert_unable_reach"):
             Logger.log_warning("Unable to reach next to boss.")
             self.blacklist.append(closest_to_boss)
-            closest_enemy = self.get_closest_enemy(self.blacklist)
 
+            while True:
+                closest_enemy = self.get_closest_enemy(self.blacklist)
+                Utils.touch(closest_enemy)
+                Utils.update_screen()
+
+                if Utils.find("combat/alert_unable_reach"):
+                    self.blacklist.append(closest_to_boss)
+                else:
+                    break
+                
             self.movement_handler(closest_enemy)
             self.battle_handler()
             return
@@ -190,24 +211,24 @@ class CombatModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("menu_mood_low"):
+            if Utils.find("combat/alert_morale_low"):
                 Utils.touch_randomly(Region(613, 731, 241, 69))
                 self.exit = 2
                 continue
-            if Utils.find("menu_sort_button"):
+            if Utils.find("menu/button_sort"):
                 Utils.touch_randomly(Region(1312, 263, 64, 56))
                 self.exit = 3
                 continue
-            if Utils.find("menu_formation"):
+            if Utils.find("combat/menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
                 continue
-            if Utils.find("combat_retreat"):
+            if Utils.find("combat/button_retreat"):
                 Utils.touch_randomly(Region(1130, 985, 243, 60))
                 continue
-            if Utils.find("commission_confirm"):
+            if Utils.find("commission/button_confirm"):
                 Utils.touch_randomly(Region(1065, 732, 235, 68))
                 continue
-            if Utils.find("map_hard_mode"):
+            if Utils.find("menu/button_hard_mode"):
                 return
 
     def clear_map(self):
@@ -219,19 +240,19 @@ class CombatModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("combat_battle_failed"):
+            if Utils.find("combat/alert_unable_battle"):
                 Logger.log_warning("Failed to defeat enemy.")
                 Utils.touch_randomly(Region(869, 741, 185, 48))
                 return
             if self.exit is not 0:
                 return
-            if Utils.find("commission_confirm"):
+            if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
-            if Utils.find("enemy_fleet_boss", 0.9):
+            if Utils.find("enemy/fleet_boss", 0.9):
                 Logger.log_msg("Boss fleet was found.")
-                boss_coords = Utils.find("enemy_fleet_boss", 0.9)
+                boss_coords = Utils.find("enemy/fleet_boss", 0.9)
                 self.clear_boss(boss_coords)
                 continue
             if enemy_coords == None:
@@ -240,7 +261,7 @@ class CombatModule(object):
             if enemy_coords:
                 Utils.touch(enemy_coords)
                 Utils.update_screen()
-            if Utils.find("combat_unable_reach", 0.8):
+            if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
                 self.blacklist.append(enemy_coords)
                 enemy_coords = None
@@ -266,11 +287,11 @@ class CombatModule(object):
             Utils.touch(boss_coords)
             Utils.update_screen()
 
-            if Utils.find("combat_unable_reach", 0.8):
+            if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_msg("Unable to reach boss.")
                 self.unable_handler(boss_coords)
                 continue
-            if Utils.find("commission_confirm"):
+            if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
@@ -289,15 +310,15 @@ class CombatModule(object):
         while self.l == []:
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('enemy_fleet_level', sim - 0.15)))
+            l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('enemy/fleet_level', sim - 0.15)))
             l1 = [x for x in l1 if (x not in blacklist)]
-            l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_1_down', sim)))
+            l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_1_down', sim)))
             l2 = [x for x in l2 if (x not in blacklist)]
-            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_2_down', sim - 0.02)))
+            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
             l3 = [x for x in l3 if (x not in blacklist)]
-            l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy_fleet_3_up', sim - 0.06)))
+            l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
             l4 = [x for x in l4 if (x not in blacklist)]
-            l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy_fleet_3_down', sim - 0.06)))
+            l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
             l5 = [x for x in l5 if (x not in blacklist)]
 
             self.l = l1 + l2 + l3 + l4 + l5
@@ -328,11 +349,11 @@ class CombatModule(object):
                 Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
                 Utils.update_screen()
             
-            if Utils.find('combat_fleet_ammo', 0.8):
-                coords = Utils.find('combat_fleet_ammo', 0.8)
+            if Utils.find('combat/fleet_ammo', 0.8):
+                coords = Utils.find('combat/fleet_ammo', 0.8)
                 coords = [coords.x + 140, coords.y + 225 - count * 20]
-            elif Utils.find('combat_fleet_arrow', 0.9):
-                coords = Utils.find('combat_fleet_arrow', 0.9)
+            elif Utils.find('combat/fleet_arrow', 0.9):
+                coords = Utils.find('combat/fleet_arrow', 0.9)
                 coords = [coords.x + 25, coords.y + 320 - count * 20]
 
             if count > 4:
@@ -343,14 +364,8 @@ class CombatModule(object):
             Utils.update_screen()
         return coords
 
-        # else: 
-        #     coords = Utils.scroll_find('combat_fleet_marker', 250, 175, 0.95)
-        #     # swipe back so enemies don't end up out of screen, only Y value
-        #     Utils.swipe(640, 360 + 175, 640, 360 - 175, 300)
-        #     return [coords.x, coords.y - 30]
-
-    def get_closest_enemy(self, blacklist=[]):
-        """Method to get the enemy closest to the fleet's current location. Note
+    def get_closest_enemy(self, blacklist=[], location=[]):
+        """Method to get the enemy closest to the specified location. Note
         this will not always be the enemy that is actually closest due to the
         asset used to find enemies and when enemies are obstructed by terrain
         or the second fleet
@@ -359,14 +374,19 @@ class CombatModule(object):
             blacklist(array, optional): Defaults to []. An array of
             coordinates to exclude when searching for the closest enemy
 
+            location(array, optional): Defaults to []. An array of coordinates
+            to replace the fleet location.
+
         Returns:
             array: An array containing the x and y coordinates of the closest
-            enemy to the fleet's current location
+            enemy to the specified location
         """
         while True: 
             fleet_location = self.get_fleet_location()
+            if location == []:
+                location = fleet_location
             enemies = self.get_enemies(blacklist)
-            closest = enemies[Utils.find_closest(enemies, fleet_location)[1]]
+            closest = enemies[Utils.find_closest(enemies, location)[1]]
 
             Logger.log_info('Current location is: {}'.format(fleet_location))
             Logger.log_info('Enemies found at: {}'.format(enemies))
@@ -377,3 +397,25 @@ class CombatModule(object):
                 del self.l[x]
 
             return [closest[0], closest[1]]
+
+    def check_movement_threads(self):
+        thread_check_button_evade = Thread(
+            target=self.check_movement_threads_func, args=("combat/button_evade",))
+        thread_check_failed_evade = Thread(
+            target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+        thread_check_item_found = Thread(
+            target=self.check_movement_threads_func, args=("menu/item_found",))
+        thread_check_menu_formation = Thread(
+            target=self.check_movement_threads_func, args=("combat/menu_formation",))
+        
+        Utils.multithreader([
+            thread_check_button_evade, thread_check_failed_evade, 
+            thread_check_item_found, thread_check_menu_formation])
+
+        return self.movement_event
+
+    def check_movement_threads_func(self, event):
+        self.movement_event[event] = (
+            True
+            if (Utils.find(event))
+            else False)

@@ -13,7 +13,6 @@ class RetirementModule(object):
         """
         self.config = config
         self.stats = stats
-        self.retirement = self.config.retirement['enabled']
         self.sorted = False
         self.last_retire = 0
 
@@ -24,9 +23,6 @@ class RetirementModule(object):
         Args:
             forced: Forces retirement to start even if need_to_retire returns False.
         """
-
-        #if self.retirement is 'Enhancement':
-            #do stuff
         if self.need_to_retire or forced is True:
             self.last_retire = self.stats.combat_done
             Logger.log_msg("Opening build menu to retire ships.")
@@ -34,21 +30,21 @@ class RetirementModule(object):
             while True:
                 Utils.update_screen()
                 
-                if Utils.find("menu_sort_button"):
+                if Utils.find("menu/button_sort"):
                     # Tap menu retire button
                     Utils.touch_randomly(Region(549, 735, 215, 64))
-                    Utils.script_sleep(2)
+                    Utils.script_sleep(1)
                     continue
                 # In case function is called from menu
-                if Utils.find("menu_battle"):
+                if Utils.find("menu/button_battle"):
                     Utils.touch_randomly(Region(1452, 1007, 198, 52))
-                    Utils.script_sleep(2)
+                    Utils.script_sleep(1)
                     continue
-                if Utils.find("menu_build"):
+                if Utils.find("menu/build"):
                     Utils.touch_randomly(Region(20, 661, 115, 99))
-                    Utils.script_sleep(2)
+                    Utils.script_sleep(1)
                     continue
-                if Utils.find("retire_selected_none"):
+                if Utils.find("retirement/selected_none"):
                     self.retire_ships()
                     Utils.touch_randomly(Region(54, 57, 67, 67))
                     return
@@ -57,31 +53,31 @@ class RetirementModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("retire_selected_none") and self.sorted == False:
-                Logger.log_msg("Opening sorting menu.")
+            if Utils.find("retirement/selected_none") and self.sorted == False:
+                Logger.log_debug("Opening sorting menu.")
                 Utils.touch_randomly(Region(1655, 14, 130, 51))
                 continue
-            if Utils.find("retire_sort_all", 0.99):
-                Logger.log_msg("Changing sorting options for retirement.")
+            if Utils.find("retirement/button_sort_all", 0.99):
+                Logger.log_debug("Changing sorting options for retirement.")
                 Utils.touch_randomly(Region(672, 724, 185, 41))
                 Utils.script_sleep(0.5)
                 Utils.touch_randomly(Region(911, 724, 185, 41))
                 Utils.script_sleep(0.5)
                 continue
-            if Utils.find("retire_sort_common") and Utils.find("retire_sort_rare"):
+            if Utils.find("retirement/button_sort_common") and Utils.find("retirement/button_sort_rare"):
                 Logger.log_msg("Sorting options for retirement are correct.")
                 self.sorted = True
                 Utils.touch_randomly(Region(1090, 969, 220, 60))
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("retire_empty"):
+            if Utils.find("retirement/empty"):
                 Logger.log_msg("No ships left to retire.")
                 Utils.touch_randomly(Region(54, 57, 67, 67))
                 return
-            if Utils.find("retire_selected_none"):
+            if Utils.find("retirement/selected_none"):
                 self.select_ships()
                 continue
-            if Utils.find("retire_bonus"):
+            if Utils.find("retirement/bonus"):
                 self.handle_retirement()
                 continue
 
@@ -93,27 +89,27 @@ class RetirementModule(object):
 
     def handle_retirement(self):
         Utils.touch_randomly(Region(1510, 978, 216, 54))
-        count = 0
+        items_found = 0
 
         while True:
             Utils.update_screen()
 
-            if Utils.find("retire_info_bonus"):
+            if Utils.find("retirement/alert_bonus"):
                 Utils.touch_randomly(Region(1412, 938, 218, 61))
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("item_found"):
+            if Utils.find("menu/item_found"):
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 Utils.script_sleep(1)
-                count += 1
-                if (count > 1):
+                items_found += 1
+                if items_found > 1:
                     return
                 continue
-            if Utils.find("retire_info"):
+            if Utils.find("retirement/alert_info"):
                 Utils.touch_randomly(Region(1320, 785, 232, 62))
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("retire_disassemble"):
+            if Utils.find("retirement/button_disassemble"):
                 Utils.touch_randomly(Region(1099, 827, 225, 58))
                 Utils.script_sleep(1)
                 continue

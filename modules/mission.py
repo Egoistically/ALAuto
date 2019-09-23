@@ -22,30 +22,30 @@ class MissionModule(object):
         while True: 
             Utils.update_screen()
 
-            if Utils.find("mission_indicator"):
+            if Utils.find("mission/alert_completed"):
                 Logger.log_msg("Found mission completed alert.")
                 Utils.touch_randomly(self.region["mission_menu"])
                 continue
-            if Utils.find("drop_ssr"):
+            if Utils.find("menu/drop_ssr"):
                 Logger.log_msg("Received SSR ship as reward.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
-            if Utils.find("drop_elite"):
+            if Utils.find("menu/drop_elite"):
                 Logger.log_msg("Received ELITE ship as reward.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
-            while Utils.find("menu_missions"):
+            while Utils.find("menu/missions"):
                 Utils.update_screen()
 
-                if Utils.find("mission_collect"):
+                if Utils.find("mission/button_collect"):
                     Logger.log_msg("Collected all missions.")
                     Utils.touch_randomly(self.region["collect"])
                     continue
-                if Utils.find("mission_claim"):
+                if Utils.find("mission/button_claim"):
                     Logger.log_msg("Claimed mission.")
                     Utils.touch_randomly(self.region["first_claim"])
                     continue
-                if Utils.find("item_found"):
+                if Utils.find("menu/item_found"):
                     Utils.touch_randomly(Region(661, 840, 598, 203))
                     continue
                 else:

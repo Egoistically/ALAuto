@@ -22,7 +22,10 @@ Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 60fps. If it does 
 * It does not support multiple fleets, it only works when **one** fleet is selected. 
 * Only maps from world **1 to 8** are added, if you would like to farm another one add it by yourself or request it to me.
 * CPU usage might spike when searching for enemies, if it bothers you comment lines 121 to 124 in utils.py.
-* It only retires commons and rares, I will (at some point) work on an Enhancement function.
+* It does not check commission requirements since it's nonsense on high level, I will work on it eventually.
+* It only retires commons and rares.
+
+(I will eventually work on a more detailed Wiki).
 
 Although it works fine (or at least should), code can be improved and some features are still to be added.  
 If you'd like to contribute in any way make sure to open a [pull request](https://github.com/Egoistically/ALAuto/pulls) or an [issue](https://github.com/Egoistically/ALAuto/issues).

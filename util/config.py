@@ -22,8 +22,9 @@ class Config(object):
         self.initialized = False
         self.scheduled_sleep = {}
         self.scheduled_stop = {}
-        self.commissions = {'enabled': False}
         self.combat = {'enabled': False}
+        self.commissions = {'enabled': False}
+        self.enhancement = {'enabled': False}
         self.missions = {'enabled': False}
         self.retirement = {'enabled': False}
         self.network = {}
@@ -34,11 +35,12 @@ class Config(object):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
-        self.commissions['enabled'] = config.getboolean('Commissions', 'Enabled')
         if config.getboolean('Combat', 'Enabled'):
             self._read_combat(config)
         else:
             self.combat = {'enabled': False}
+        self.commissions['enabled'] = config.getboolean('Commissions', 'Enabled')
+        self.enhancement['enabled'] = config.getboolean('Enhancement', 'Enabled')
         self.missions['enabled'] = config.getboolean('Missions', 'Enabled')
         self.retirement['enabled'] = config.getboolean('Retirement', 'Enabled')
         self.validate()
