@@ -88,11 +88,11 @@ class CombatModule(object):
                 continue
 
         Utils.script_sleep(1)
-        Utils.touch_randomly(self.region["menu_nav_back"])
 
-        Utils.update_screen()
-        if not Utils.find("menu/button_battle"):
-            Utils.touch_randomly(self.region["menu_nav_back"])
+        while not Utils.find("menu/button_battle"):
+            Utils.touch_randomly(Region(54, 57, 67, 67))
+            Utils.script_sleep(1)
+            Utils.update_screen()
 
         return self.exit
 

@@ -137,7 +137,7 @@ while True:
     Utils.update_screen()
     
     # temporal solution to event alerts
-    if Utils.find("menu/button_hard_mode") or not Utils.find("menu/button_battle", 0.9):
+    if not Utils.find("menu/button_battle"):
         Utils.touch_randomly(Region(54, 57, 67, 67))
         continue
     if Utils.find("commission/alert_completed"):
