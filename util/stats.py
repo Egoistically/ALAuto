@@ -18,12 +18,10 @@ class Stats(object):
         """Resets all stats to 0
         """
         self.start_time = datetime.now()
-        self.cycles_completed = 0
         self.commissions_started = 0
         self.commissions_received = 0
         self.combat_attempted = 0
         self.combat_done = 0
-        self.recoveries = 0
 
     def _pretty_timedelta(self, delta):
         """Generate a human-readable time delta representation of how long the
@@ -72,26 +70,16 @@ class Stats(object):
                 "Commissions sent: {} / received: {}".format(
                     self._pretty_perhour(self.commissions_started, hours),
                     self._pretty_perhour(self.commissions_received, hours)))
-        else:
-            Logger.log_success(
-                "Commissions received: {}".format(self.commissions_received))
 
         if self.config.combat['enabled']:
             Logger.log_success("Combat done: {} / attempted: {}".format(
                 self._pretty_perhour(self.combat_done, hours),
                 self._pretty_perhour(self.combat_attempted, hours)))
 
-        Logger.log_success("Recoveries done: {}".format(self.recoveries))
-
         Logger.log_success(
             "ALAuto has been running for {} (started on {})".format(
                 self._pretty_timedelta(delta),
                 self.start_time.strftime('%Y-%m-%d %H:%M:%S')))
-
-    def increment_cycles_completed(self):
-        """Increments the number of cycles completed
-        """
-        self.cycles_completed += 1
 
     def increment_commissions_started(self):
         """Increments the number of commissions started
@@ -112,8 +100,3 @@ class Stats(object):
         """Increments the number of sorties completed
         """
         self.combat_done += 1
-        
-    def increment_recoveries(self):
-        """Increments the number of recoveries completed
-        """
-        self.recoveries += 1

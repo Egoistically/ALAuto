@@ -39,12 +39,11 @@ class CombatModule(object):
         Returns:
             int: 1 if boss was defeated, 2 if morale is too low and 3 if dock is full.
         """
-        finished = False
         self.exit = 0
         self.l.clear()
         self.blacklist.clear()
 
-        while finished == False:
+        while True:
             Utils.update_screen()
 
             if Utils.find("menu/button_sort"):
@@ -72,20 +71,21 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/button_retreat"):
                 Logger.log_debug("Found retreat button, starting clear function.")
-                self.clear_map()
+                if not self.clear_map():
+                    self.stats.increment_combat_attempted()
+                    break
             if self.exit == 1:
                 Logger.log_msg("Boss successfully defeated, going back to menu.")
                 self.stats.increment_combat_done()
-                finished = True
-                continue
+                break
             if self.exit == 2:
                 Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
-                finished = True
-                continue
+                self.stats.increment_combat_attempted()
+                break
             if self.exit == 3:
                 Logger.log_warning("Dock is full, need to retire.")
-                finished = True
-                continue
+                self.stats.increment_combat_attempted()
+                break
 
         Utils.script_sleep(1)
 
@@ -234,7 +234,12 @@ class CombatModule(object):
     def clear_map(self):
         Logger.log_msg("Started map clear.")
         Utils.script_sleep(2.5)
+
+        #hide strat menu
         Utils.touch_randomly(Region(1617, 593, 4, 146))
+        #swipe map to the left
+        Utils.swipe(960, 540, 1300, 540, 100)
+
         enemy_coords = self.get_closest_enemy(self.blacklist)
 
         while True:
@@ -243,9 +248,9 @@ class CombatModule(object):
             if Utils.find("combat/alert_unable_battle"):
                 Logger.log_warning("Failed to defeat enemy.")
                 Utils.touch_randomly(Region(869, 741, 185, 48))
-                return
+                return False
             if self.exit is not 0:
-                return
+                return True
             if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
