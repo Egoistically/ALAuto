@@ -161,9 +161,14 @@ class CombatModule(object):
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 continue
-            if event["combat/menu_formation" ]:
+            if event["combat/menu_formation"]:
                 return
             else:
+                if self.stats.combat_done < 1 and Utils.find("combat/alert_auto"):
+                    Logger.log_debug("Found auto enabled alert.")
+                    Utils.touch_randomly(Region(893, 793, 133, 48))
+                    continue
+                
                 if count % 3 == 0:
                     Utils.touch(location)
                 if count > 21:
