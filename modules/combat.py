@@ -97,7 +97,7 @@ class CombatModule(object):
         return self.exit
 
     def battle_handler(self):
-        Logger.log_msg("Starting battle.")
+        Logger.log_msg("Starting combat.")
         Utils.touch_randomly(self.region["menu_combat_start"])
         Utils.script_sleep(4)
 

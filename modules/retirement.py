@@ -18,12 +18,12 @@ class RetirementModule(object):
 
     def retirement_logic_wrapper(self, forced=False):
         """Method that fires off the necessary child methods that encapsulates
-        the entire action filtering and retiring ships
+        the entire action of filtering and retiring ships
 
         Args:
             forced: Forces retirement to start even if need_to_retire returns False.
         """
-        if self.need_to_retire or forced is True:
+        if self.need_to_retire or forced:
             self.last_retire = self.stats.combat_done
             Logger.log_msg("Opening build menu to retire ships.")
 

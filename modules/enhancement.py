@@ -20,7 +20,7 @@ class EnhancementModule(object):
 
     def enhancement_logic_wrapper(self):
         """Method that fires off the necessary child methods that encapsulates
-        the entire action enhancing a ship
+        the entire action of enhancing a ship
         """
         if self.need_to_enhance:
             self.last_enhance = self.stats.combat_done

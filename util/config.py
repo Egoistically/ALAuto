@@ -27,6 +27,7 @@ class Config(object):
         self.enhancement = {'enabled': False}
         self.missions = {'enabled': False}
         self.retirement = {'enabled': False}
+        self.events = {'enabled': False}
         self.network = {}
         self.read()
 
@@ -35,14 +36,22 @@ class Config(object):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
+
         if config.getboolean('Combat', 'Enabled'):
             self._read_combat(config)
         else:
             self.combat = {'enabled': False}
-        self.commissions['enabled'] = config.getboolean('Commissions', 'Enabled')
-        self.enhancement['enabled'] = config.getboolean('Enhancement', 'Enabled')
-        self.missions['enabled'] = config.getboolean('Missions', 'Enabled')
-        self.retirement['enabled'] = config.getboolean('Retirement', 'Enabled')
+
+        self.commissions['enabled'] = config.getboolean('Modules', 'Commissions')
+        self.enhancement['enabled'] = config.getboolean('Modules', 'Enhancement')
+        self.missions['enabled'] = config.getboolean('Modules', 'Missions')
+        self.retirement['enabled'] = config.getboolean('Modules', 'Retirement')
+
+        if config.getboolean('Events', 'Enabled'):
+            self._read_event(config)
+        else:
+            self.events = {'enabled': False}
+
         self.validate()
         if (self.ok and not self.initialized):
             Logger.log_msg("Starting ALAuto!")
@@ -68,6 +77,15 @@ class Config(object):
         self.combat['map'] = config.get('Combat', 'Map')
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
 
+    def _read_event(self, config):
+        """Method to parse the Event settings of the passed in config.
+        Args:
+            config (ConfigParser): ConfigParser instance
+        """
+        self.events['enabled'] = True
+        self.events['name'] = config.get('Events', 'Event')
+        self.events['levels'] = config.get('Events', 'Levels')
+
     def validate(self):
         def try_cast_to_int(val):
             """Helper function that attempts to coerce the val to an int,
@@ -91,8 +109,8 @@ class Config(object):
 
         if self.combat['enabled']:
             map = self.combat['map'].split('-')
-            valid_chapters = list(range(1, 12)) + ['E']
-            valid_levels = list(range(1, 12)) + ['A1', 'A2', 'A3', 'A4',
+            valid_chapters = list(range(1, 9)) + ['E']
+            valid_levels = list(range(1, 5)) + ['A1', 'A2', 'A3', 'A4',
                                                  'B1', 'B2', 'B3', 'B4',
                                                  'C1', 'C2', 'C3', 'C4',
                                                  'D1', 'D2', 'D3', 'D4']

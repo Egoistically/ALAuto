@@ -5,6 +5,7 @@ from modules.commission import CommissionModule
 from modules.enhancement import EnhancementModule
 from modules.mission import MissionModule
 from modules.retirement import RetirementModule
+from modules.event import EventModule
 from datetime import datetime, timedelta
 from util.adb import Adb
 from util.config import Config
@@ -19,7 +20,8 @@ class ALAuto(object):
         'commissions': None,
         'enhancement': None,
         'missions': None,
-        'retirement': None
+        'retirement': None,
+        'event': None
     }
 
     def __init__(self, config):
@@ -42,6 +44,8 @@ class ALAuto(object):
             self.modules['missions'] = MissionModule(self.config, self.stats)
         if self.config.retirement['enabled']:
             self.modules['retirement'] = RetirementModule(self.config, self.stats)
+        if self.config.events['enabled']:
+            self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
         self.next_combat = datetime.now()
 
@@ -72,29 +76,31 @@ class ALAuto(object):
         """Method to run the expedition cycle.
         """
         if self.modules['commissions']:
-            if self.modules['commissions'].commission_logic_wrapper():
-                self.print_stats_check = True
+            self.modules['commissions'].commission_logic_wrapper()
 
     def run_enhancement_cycle(self):
         """Method to run the enhancement cycle.
         """
         if self.modules['enhancement']:
-            if self.modules['enhancement'].enhancement_logic_wrapper():
-                self.print_stats_check = True
+            self.modules['enhancement'].enhancement_logic_wrapper()
 
     def run_mission_cycle(self):
         """Method to run the mission cycle
         """
         if self.modules['missions']:
-            if self.modules['missions'].mission_logic_wrapper():
-                self.print_stats_check = True
+            self.modules['missions'].mission_logic_wrapper()
 
     def run_retirement_cycle(self):
         """Method to run the retirement cycle
         """
         if self.modules['retirement']:
-            if self.modules['retirement'].retirement_logic_wrapper():
-                self.print_stats_check = True
+            self.modules['retirement'].retirement_logic_wrapper()
+
+    def run_event_cycle(self):
+        """Method to run the event cycle
+        """
+        if self.modules['event']:
+            self.modules['event'].event_logic_wrapper()
 
     def print_cycle_stats(self):
         """Method to print the cycle stats"
@@ -146,6 +152,7 @@ while True:
     if Utils.find("mission/alert_completed"):
         script.run_mission_cycle()
     if script.next_combat != 0 and script.next_combat < datetime.now():
+        script.run_event_cycle()
         script.run_combat_cycle()
         script.run_enhancement_cycle()
         script.run_retirement_cycle()
