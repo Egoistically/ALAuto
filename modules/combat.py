@@ -161,14 +161,13 @@ class CombatModule(object):
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
                 continue
+            if event["menu/alert_info"]:
+                Logger.log_debug("Found alert.")
+                Utils.find_and_touch("menu/alert_close")
+                continue
             if event["combat/menu_formation"]:
                 return
             else:
-                if self.stats.combat_done < 1 and Utils.find("combat/alert_auto"):
-                    Logger.log_debug("Found auto enabled alert.")
-                    Utils.touch_randomly(Region(893, 793, 133, 48))
-                    continue
-                
                 if count % 3 == 0:
                     Utils.touch(location)
                 if count > 21:
@@ -413,6 +412,8 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("combat/button_evade",))
         thread_check_failed_evade = Thread(
             target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+        thread_check_alert_info = Thread(
+            target=self.check_movement_threads_func, args=("menu/alert_info",))
         thread_check_item_found = Thread(
             target=self.check_movement_threads_func, args=("menu/item_found",))
         thread_check_menu_formation = Thread(
@@ -420,7 +421,8 @@ class CombatModule(object):
         
         Utils.multithreader([
             thread_check_button_evade, thread_check_failed_evade, 
-            thread_check_item_found, thread_check_menu_formation])
+            thread_check_item_found, thread_check_menu_formation,
+            thread_check_alert_info])
 
         return self.movement_event
 

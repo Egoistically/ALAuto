@@ -82,7 +82,7 @@ class EnhancementModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("retirement/alert_info"):
+            if Utils.find("menu/alert_info"):
                 Utils.touch_randomly(Region(1320, 785, 232, 62))
                 Utils.script_sleep(1)
                 continue
