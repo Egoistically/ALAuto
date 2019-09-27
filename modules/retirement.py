@@ -41,7 +41,10 @@ class RetirementModule(object):
                     Utils.script_sleep(1)
                     continue
                 if Utils.find("menu/build"):
-                    Utils.touch_randomly(Region(20, 661, 115, 99))
+                    if Utils.find("event/build_limited"):
+                        Utils.touch_randomly(Region(30, 816, 94, 94))
+                    else:
+                        Utils.touch_randomly(Region(20, 661, 115, 99))
                     Utils.script_sleep(1)
                     continue
                 if Utils.find("retirement/selected_none"):
