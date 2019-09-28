@@ -6,9 +6,8 @@ Automates Combat, Commissions, Missions, Enhancement and Retiring.
 
 ## Requirements on Windows
 * Python 3.X installed and added to PATH.
-* [ADB r23](https://dl.google.com/android/repository/platform-tools_r23.0.1-windows.zip) added to PATH.
-* This [sed](http://unxutils.sourceforge.net/) port added to PATH.
-* ADB debugging enabled emulator with **1920x1080 resolution**.
+* Latest [ADB](https://developer.android.com/studio/releases/platform-tools) added to PATH.
+* ADB debugging enabled emulator with **1920x1080 resolution** and **Android 5 or newer**.
 
 Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 60fps. If it does not work with your emulator please use Nox.
 
