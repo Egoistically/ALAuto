@@ -11,7 +11,7 @@ from util.logger import Logger
 class Region(object):
     x, y, w, h = 0, 0, 0, 0
 
-    def __init__(cls, x, y, w, h):
+    def __init__(self, x, y, w, h):
         """Initializes a region.
 
         Args:
@@ -20,10 +20,10 @@ class Region(object):
             w (int): Width of the region.
             h (int): Height of the region.
         """
-        cls.x = x
-        cls.y = y
-        cls.w = w
-        cls.h = h
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
 
 screen = None
 
@@ -76,7 +76,10 @@ class Utils(object):
         global screen
         screen = None
         while screen is None:
-            screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
+            if Adb.legacy:
+                screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8),0)
+            else:
+                screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
 
     @staticmethod
     def find(image, similarity=DEFAULT_SIMILARITY):

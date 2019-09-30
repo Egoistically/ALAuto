@@ -3,6 +3,7 @@ from util.logger import Logger
 
 class Adb(object):
 
+    legacy = False
     service = ''
 
     def init(self):
@@ -10,6 +11,12 @@ class Adb(object):
         """
         self.kill_server()
         return self.start_server()
+
+    def enable_legacy(self):
+        """Method to enable legacy adb usage.
+        """
+        self.legacy = True
+        return
 
     def start_server(self):
         """Starts the ADB server

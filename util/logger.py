@@ -19,10 +19,10 @@ class Logger(object):
     CLR_INFO = '\u001b[35m'
     CLR_END = '\033[0m'
 
-    def enable_debugging(cls):
+    def enable_debugging(self):
         """Method to enable debugging logs.
         """
-        cls.debug = True
+        self.debug = True
         return
 
     @staticmethod

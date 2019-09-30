@@ -117,6 +117,8 @@ parser.add_argument('-c', '--config',
                          'of the default config.ini')
 parser.add_argument('-d', '--debug',
                     help='Enables debugging logs.', action='store_true')
+parser.add_argument('-l', '--legacy',
+                    help='Enables sed usage.', action='store_true')
 args = parser.parse_args()
 
 config = Config('config.ini')
@@ -128,6 +130,9 @@ if args:
     if args.debug:
         Logger.log_info("Enabled debugging.")
         Logger.enable_debugging(Logger)
+    if args.legacy:
+        Logger.log_info("Enabled sed usage.")
+        Adb.enable_legacy(Adb)
 
 script = ALAuto(config)
 
@@ -145,6 +150,7 @@ while True:
     # temporal solution to event alerts
     if not Utils.find("menu/button_battle"):
         Utils.touch_randomly(Region(54, 57, 67, 67))
+        Utils.script_sleep(1)
         continue
     if Utils.find("commission/alert_completed"):
         script.run_commission_cycle()
