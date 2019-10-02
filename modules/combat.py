@@ -153,9 +153,19 @@ class CombatModule(object):
                 Utils.touch_randomly(Region(1617, 593, 4, 146))
                 return
 
-    def movement_handler(self, location):
+    def movement_handler(self, target_location):
+        """
+        Method that handles the fleet movement until it reach its target (mystery node or enemy node).
+        If the coordinates are wrong, they will be blacklisted and another set of coordinates to work on is obtained.
+        If the target is a mystery node and what is found is ammo, then the method will fall in the blacklist case
+        and search for another enemy: this is inefficient and should be improved, but it works.
+
+        Returns:
+            (int): 1 if a fight is needed, otherwise 0.
+        """
         Logger.log_msg("Moving towards objective.")
         count = 0
+        location = [target_location[0], target_location[1]]
 
         while True:
             Utils.update_screen()
@@ -174,13 +184,18 @@ class CombatModule(object):
             if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
+                if target_location[2] == "question_mark":
+                    Logger.log_msg("Target reached.")
+                    return 0
                 continue
             if event["menu/alert_info"]:
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
+
             if event["combat/menu_formation"] or event["combat/menu_loading"]:
-                return
+                return 1
+
             else:
                 if count % 3 == 0:
                     Utils.touch(location)
@@ -259,6 +274,7 @@ class CombatModule(object):
         Utils.swipe(960, 540, 1300, 540, 100)
 
         enemy_coords = self.get_closest_enemy(self.blacklist)
+        target_coords = [enemy_coords[0], enemy_coords[1], "enemy"]
 
         while True:
             Utils.update_screen()
@@ -274,22 +290,34 @@ class CombatModule(object):
                 boss_coords = Utils.find("enemy/fleet_boss", 0.9)
                 self.clear_boss(boss_coords)
                 continue
-            if enemy_coords == None:
-                enemy_coords = self.get_closest_enemy(self.blacklist)
+            if target_coords == None:
+                if Utils.find("combat/question_mark", 0.9):
+                    target_coords = self.get_closest_target(self.blacklist)
+                    #if it is a an item (question_mark), tap a bit lower
+                    if target_coords[2] == "question_mark":
+                        #coord y
+                        target_coords[1] += 175
+                else:
+                    closest_enemy = self.get_closest_enemy(self.blacklist)
+                    target_coords = [closest_enemy[0], closest_enemy[1], "enemy"]
                 continue
-            if enemy_coords:
+            if target_coords:
+                enemy_coords = [target_coords[0], target_coords[1]]
                 Utils.touch(enemy_coords)
                 Utils.update_screen()
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
                 self.blacklist.append(enemy_coords)
+                target_coords = None
                 enemy_coords = None
                 continue
             else:
-                self.movement_handler(enemy_coords)
+                movement_result = self.movement_handler(target_coords)
+                if movement_result == 1:
+                    self.battle_handler()
+                target_coords = None
                 enemy_coords = None
-                
-                self.battle_handler()
+
                 self.blacklist.clear()
                 continue
 
@@ -309,6 +337,7 @@ class CombatModule(object):
                 self.unable_handler(boss_coords)
                 continue
             else:
+                boss_coords.append("boss")
                 self.movement_handler(boss_coords)
                 self.battle_handler(boss=True)
                 self.exit = 1
@@ -410,6 +439,59 @@ class CombatModule(object):
                 del self.l[x]
 
             return [closest[0], closest[1]]
+
+    def get_closest_target(self, blacklist=[], location=[]):
+        """Method to get the closest target (enemy or item) to the specified location. Note
+        this will not always be the target that is actually closest.
+
+        Args:
+            blacklist(array, optional): Defaults to []. An array of
+            coordinates to exclude when searching for the closest enemy
+
+            location(array, optional): Defaults to []. An array of coordinates
+            to replace the fleet location.
+
+        Returns:
+            array: An array containing the x and y coordinates and the type of the closest
+            target
+        """
+        while True: 
+            fleet_location = self.get_fleet_location()
+            if location == []:
+                location = fleet_location
+            #get all the enemies
+            enemies = self.get_enemies(blacklist)
+            #get all the question marks on the map
+            sim = 0.99
+            question_marks = []
+
+            while question_marks == []:
+                Utils.update_screen()
+
+                l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('combat/question_mark', sim - 0.09)))
+                l1 = [x for x in l1 if (x not in blacklist)]
+
+                question_marks = l1
+                sim -= 0.005
+                #print
+        
+            question_marks = Utils.filter_similar_coords(question_marks)
+            #working on all possible targets
+            targets = enemies + question_marks
+            closest = targets[Utils.find_closest(targets, location)[1]]
+
+            Logger.log_info('Current location is: {}'.format(fleet_location))
+            Logger.log_info('Targets found at: {}'.format(enemies))
+            Logger.log_info('Closest target is at {}'.format(closest))
+
+            if closest in self.l:
+                x = self.l.index(closest)
+                del self.l[x]
+
+            if closest in question_marks:
+                return [closest[0], closest[1], "question_mark"]
+            else:
+                return [closest[0], closest[1], "enemy"]
 
     def check_movement_threads(self):
         thread_check_button_evade = Thread(
