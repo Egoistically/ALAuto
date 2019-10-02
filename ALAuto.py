@@ -164,6 +164,6 @@ while True:
         script.run_retirement_cycle()
         script.print_cycle_stats()
     else:
-        Logger.log_msg("Nothing to do, will check again in 5 minutes.")
+        Logger.log_msg("Nothing to do, will check again in a few minutes.")
         Utils.script_sleep(300)
         continue

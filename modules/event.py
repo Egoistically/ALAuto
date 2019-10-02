@@ -33,7 +33,7 @@ class EventModule(object):
             Logger.log_msg("Opening event menu.")
 
             while not Utils.find("menu/operation"):
-                Utils.find_and_touch("event/crosswave/menu_button")
+                Utils.find_and_touch("event/crosswave/menu_button", 0.85)
                 Utils.script_sleep(1)
                 Utils.update_screen()
 
@@ -41,7 +41,7 @@ class EventModule(object):
 
             while ('EX' in self.levels):
                 Utils.update_screen()
-                if Utils.find("event/crosswave/ex_completed"):
+                if Utils.find("event/crosswave/ex_completed", 0.98):
                     Logger.log_info("No more EX combats to do.")
                     break
 

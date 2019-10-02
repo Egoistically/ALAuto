@@ -96,24 +96,27 @@ class CombatModule(object):
 
         return self.exit
 
-    def battle_handler(self):
+    def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
-        Utils.touch_randomly(self.region["menu_combat_start"])
+
+        while not Utils.find("combat/menu_loading", 0.8):
+            Utils.update_screen()
+
+            if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
+                self.retreat_handler()
+                return
+            else:
+                Utils.touch_randomly(self.region["menu_combat_start"])
+                Utils.script_sleep(1)
+        
         Utils.script_sleep(4)
 
         while True:
             Utils.update_screen()
             
-            if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
-                self.retreat_handler()
-                return
             if Utils.find("combat/alert_lock"):
                 Logger.log_msg("Locking received ship.")
                 Utils.touch_randomly(Region(1086, 739, 200, 55))
-                continue
-            if Utils.find("commission/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
             if Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
@@ -138,6 +141,16 @@ class CombatModule(object):
                 Logger.log_msg("Combat ended.")
                 Utils.touch_randomly(self.region["combat_end_confirm"])
                 Utils.script_sleep(1)
+                if boss:
+                    return
+                Utils.update_screen()
+            if Utils.find("commission/button_confirm"):
+                Logger.log_msg("Found commission info message.")
+                Utils.touch_randomly(self.region["combat_com_confirm"])
+                continue
+            if Utils.find("combat/button_retreat"):
+                Utils.script_sleep(3)
+                Utils.touch_randomly(Region(1617, 593, 4, 146))
                 return
 
     def movement_handler(self, location):
@@ -151,6 +164,7 @@ class CombatModule(object):
             if event["combat/button_evade"]:
                 Logger.log_msg("Ambush was found, trying to evade.")
                 Utils.touch_randomly(self.region["combat_ambush_evade"])
+                Utils.script_sleep(0.5)
                 continue
             if event["combat/alert_failed_evade"]:
                 Logger.log_warning("Failed to evade ambush.")
@@ -165,7 +179,7 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-            if event["combat/menu_formation"]:
+            if event["combat/menu_formation"] or event["combat/menu_loading"]:
                 return
             else:
                 if count % 3 == 0:
@@ -255,10 +269,6 @@ class CombatModule(object):
                 return False
             if self.exit is not 0:
                 return True
-            if Utils.find("commission/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
             if Utils.find("enemy/fleet_boss", 0.9):
                 Logger.log_msg("Boss fleet was found.")
                 boss_coords = Utils.find("enemy/fleet_boss", 0.9)
@@ -278,10 +288,8 @@ class CombatModule(object):
             else:
                 self.movement_handler(enemy_coords)
                 enemy_coords = None
+                
                 self.battle_handler()
-
-                Utils.script_sleep(3)
-                Utils.touch_randomly(Region(1617, 593, 4, 146))
                 self.blacklist.clear()
                 continue
 
@@ -300,13 +308,9 @@ class CombatModule(object):
                 Logger.log_msg("Unable to reach boss.")
                 self.unable_handler(boss_coords)
                 continue
-            if Utils.find("commission/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
             else:
                 self.movement_handler(boss_coords)
-                self.battle_handler()
+                self.battle_handler(boss=True)
                 self.exit = 1
                 return
 
@@ -418,11 +422,13 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("menu/item_found",))
         thread_check_menu_formation = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
+        thread_check_menu_loading = Thread(
+            target=self.check_movement_threads_func, args=("combat/menu_loading",))
         
         Utils.multithreader([
             thread_check_button_evade, thread_check_failed_evade, 
-            thread_check_item_found, thread_check_menu_formation,
-            thread_check_alert_info])
+            thread_check_alert_info, thread_check_item_found,
+            thread_check_menu_formation, thread_check_menu_loading])
 
         return self.movement_event
 
