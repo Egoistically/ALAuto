@@ -153,19 +153,21 @@ class CombatModule(object):
                 Utils.touch_randomly(Region(1617, 593, 4, 146))
                 return
 
-    def movement_handler(self, target_location):
+    def movement_handler(self, target_info):
         """
         Method that handles the fleet movement until it reach its target (mystery node or enemy node).
         If the coordinates are wrong, they will be blacklisted and another set of coordinates to work on is obtained.
         If the target is a mystery node and what is found is ammo, then the method will fall in the blacklist case
         and search for another enemy: this is inefficient and should be improved, but it works.
 
+        Args:
+            target_info (list): coordinate_x, coordinate_y, type. Describes the selected target.
         Returns:
             (int): 1 if a fight is needed, otherwise 0.
         """
         Logger.log_msg("Moving towards objective.")
         count = 0
-        location = [target_location[0], target_location[1]]
+        location = [target_info[0], target_info[1]]
 
         while True:
             Utils.update_screen()
@@ -184,7 +186,7 @@ class CombatModule(object):
             if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
-                if target_location[2] == "question_mark":
+                if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
                     return 0
                 continue
@@ -209,6 +211,13 @@ class CombatModule(object):
                 count += 1
 
     def unable_handler(self, coords):
+        """
+        Method called when the path to the boss fleet is obstructed by mobs: it procedes to switch targets to the mobs
+        which are blocking the path.
+        
+        Args:
+            coords (list): coordinate_x, coordinate_y. These coordinates describe the boss location.
+        """
         Logger.log_msg("Unable to reach boss function started.")
         closest_to_boss = self.get_closest_enemy(self.blacklist, coords)
 
@@ -273,8 +282,8 @@ class CombatModule(object):
         #swipe map to the left
         Utils.swipe(960, 540, 1300, 540, 100)
 
-        enemy_coords = self.get_closest_enemy(self.blacklist)
-        target_coords = [enemy_coords[0], enemy_coords[1], "enemy"]
+        target_info = self.get_closest_enemy(self.blacklist)
+        target_info.append("enemy")
 
         while True:
             Utils.update_screen()
@@ -287,58 +296,58 @@ class CombatModule(object):
                 return True
             if Utils.find("enemy/fleet_boss", 0.9):
                 Logger.log_msg("Boss fleet was found.")
-                boss_coords = Utils.find("enemy/fleet_boss", 0.9)
-                self.clear_boss(boss_coords)
+                boss_region = Utils.find("enemy/fleet_boss", 0.9)
+                #extrapolates boss_info(x,y,enemy_type) from the boss_region found
+                boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
+                self.clear_boss(boss_info)
                 continue
-            if target_coords == None:
+            if target_info == None:
                 if Utils.find("combat/question_mark", 0.9):
-                    target_coords = self.get_closest_target(self.blacklist)
-                    #if it is a an item (question_mark), tap a bit lower
-                    if target_coords[2] == "question_mark":
-                        #coord y
-                        target_coords[1] += 175
+                    target_info = self.get_closest_target(self.blacklist)
+                    #if it is a mystery_node (question_mark), tap a bit lower
+                    if target_info[2] == "mystery_node":
+                        #coord_y += 140
+                        target_info[1] += 140
                 else:
-                    closest_enemy = self.get_closest_enemy(self.blacklist)
-                    target_coords = [closest_enemy[0], closest_enemy[1], "enemy"]
+                    target_info = self.get_closest_enemy(self.blacklist)
+                    target_info.append("enemy")
                 continue
-            if target_coords:
-                enemy_coords = [target_coords[0], target_coords[1]]
-                Utils.touch(enemy_coords)
+            if target_info:
+                #tap at target's coordinates
+                Utils.touch(target_info[0:2])
                 Utils.update_screen()
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
-                self.blacklist.append(enemy_coords)
-                target_coords = None
-                enemy_coords = None
+                self.blacklist.append(target_info[0:2])
+                target_info = None
                 continue
             else:
-                movement_result = self.movement_handler(target_coords)
+                movement_result = self.movement_handler(target_info)
                 if movement_result == 1:
                     self.battle_handler()
-                target_coords = None
-                enemy_coords = None
+                target_info = None
 
                 self.blacklist.clear()
                 continue
 
-    def clear_boss(self, coords):
+    def clear_boss(self, boss_info):
         Logger.log_debug("Started boss function.")
-        boss_coords = [coords.x + 50, coords.y + 25]
 
         self.l.clear()
         self.blacklist.clear()
 
         while True:
-            Utils.touch(boss_coords)
+            #tap at boss' coordinates
+            Utils.touch(boss_info[0:2])
             Utils.update_screen()
 
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_msg("Unable to reach boss.")
-                self.unable_handler(boss_coords)
+                #handle boss' coordinates
+                self.unable_handler(boss_info[0:2])
                 continue
             else:
-                boss_coords.append("boss")
-                self.movement_handler(boss_coords)
+                self.movement_handler(boss_info)
                 self.battle_handler(boss=True)
                 self.exit = 1
                 return
@@ -463,21 +472,20 @@ class CombatModule(object):
             enemies = self.get_enemies(blacklist)
             #get all the question marks on the map
             sim = 0.99
-            question_marks = []
+            mystery_nodes = []
 
-            while question_marks == []:
+            while mystery_nodes == []:
                 Utils.update_screen()
 
-                l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('combat/question_mark', sim - 0.09)))
+                l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180,Utils.find_all('combat/question_mark', sim - 0.09))
                 l1 = [x for x in l1 if (x not in blacklist)]
 
-                question_marks = l1
+                mystery_nodes = l1
                 sim -= 0.005
-                #print
         
-            question_marks = Utils.filter_similar_coords(question_marks)
+            mystery_nodes = Utils.filter_similar_coords(mystery_nodes)
             #working on all possible targets
-            targets = enemies + question_marks
+            targets = enemies + mystery_nodes
             closest = targets[Utils.find_closest(targets, location)[1]]
 
             Logger.log_info('Current location is: {}'.format(fleet_location))
@@ -488,8 +496,8 @@ class CombatModule(object):
                 x = self.l.index(closest)
                 del self.l[x]
 
-            if closest in question_marks:
-                return [closest[0], closest[1], "question_mark"]
+            if closest in mystery_nodes:
+                return [closest[0], closest[1], "mystery_node"]
             else:
                 return [closest[0], closest[1], "enemy"]
 
