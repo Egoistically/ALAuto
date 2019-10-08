@@ -33,7 +33,7 @@ class EventModule(object):
             Logger.log_msg("Opening event menu.")
 
             while not Utils.find("menu/operation"):
-                Utils.find_and_touch("event/crosswave/menu_button", 0.85)
+                Utils.find_and_touch("event/crosswave/menu_button")
                 Utils.script_sleep(1)
                 Utils.update_screen()
 

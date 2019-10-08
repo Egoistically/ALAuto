@@ -15,7 +15,8 @@ class EnhancementModule(object):
         self.stats = stats
         self.last_enhance = 0
         self.region = {
-            'button_favorite': Region(1014, 19, 170, 42)
+            'button_favorite': Region(1014, 19, 170, 42),
+            'button_go_back': Region(54, 57, 67, 67)
         }
 
     def enhancement_logic_wrapper(self):
@@ -43,6 +44,11 @@ class EnhancementModule(object):
                     continue
 
     def enhance_ship(self):
+        """
+        Method that selects the first (leftmost of the first row) favorite ship and proceeds to enhance her.
+        """
+        
+        #selects ship
         Utils.touch_randomly(Region(209, 209, 80, 120))
         Utils.script_sleep(1)
 
@@ -51,6 +57,7 @@ class EnhancementModule(object):
 
             if Utils.find("enhancement/menu_enhance"):
                 Logger.log_debug("Filling with ships.")
+                #taps the "fill" button
                 Utils.touch_randomly(Region(1467, 917, 140, 38))
                 Utils.update_screen()
             if Utils.find("enhancement/alert_no_items", 0.85):
@@ -62,14 +69,22 @@ class EnhancementModule(object):
                 break
             if Utils.find("enhancement/menu_details"):
                 Logger.log_debug("Opening enhance menu.")
-                Utils.touch_randomly(Region(31, 188, 91, 91))
+                if not Utils.find("enhancement/menu_retrofit", 0.9):
+                    Utils.touch_randomly(Region(31, 188, 91, 91))
+                else:
+                    Utils.touch_randomly(Region(31, 329, 91, 91))
                 continue
 
-        Utils.touch_randomly(Region(54, 57, 67, 67))
+        Utils.touch_randomly(self.region['button_go_back'])
         Utils.script_sleep(1)
         return
 
     def handle_retirement(self):
+        """
+        Method that handles the disassembling of the ship materials used in the enhancement process.
+        """
+
+        #tap the "enhance" button
         Utils.touch_randomly(Region(1705, 916, 167, 40))
         Utils.update_screen()
 
