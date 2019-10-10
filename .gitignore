@@ -106,3 +106,5 @@ venv.bak/
 # visual studio
 .vs/
 .vscode/
+
+config-local.ini
