@@ -82,6 +82,19 @@ class Utils(object):
                 screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
 
     @staticmethod
+    def wait_update_screen(time=None):
+        """Delayed update screen.
+
+        Args: 
+            time (int, optional): seconds of delay.
+        """
+        if time is None:
+            Utils.script_sleep()
+        else:
+            Utils.script_sleep(time)
+        Utils.update_screen()
+
+    @staticmethod
     def find(image, similarity=DEFAULT_SIMILARITY):
         """Finds the specified image on the screen
 

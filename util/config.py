@@ -111,14 +111,15 @@ class Config(object):
             map = self.combat['map'].split('-')
             valid_chapters = list(range(1, 9)) + ['E']
             valid_levels = list(range(1, 5)) + ['A1', 'A2', 'A3', 'A4',
-                                                 'B1', 'B2', 'B3', 'B4',
-                                                 'C1', 'C2', 'C3', 'C4',
-                                                 'D1', 'D2', 'D3', 'D4']
+                                                'B1', 'B2', 'B3', 'B4',
+                                                'C1', 'C2', 'C3', 'C4',
+                                                'D1', 'D2', 'D3', 'D4',
+                                                'SP1', 'SP2', 'SP3']
             if (try_cast_to_int(map[0]) not in valid_chapters or
-               try_cast_to_int(map[1]) not in valid_levels):
+                try_cast_to_int(map[1]) not in valid_levels):
                 self.ok = False
                 Logger.log_error("Invalid Map Selected: '{}'."
-                                 .format(self.combat['map']))
+                                .format(self.combat['map']))
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.
