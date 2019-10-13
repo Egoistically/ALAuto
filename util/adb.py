@@ -19,14 +19,28 @@ class Adb(object):
         return
 
     def start_server(self):
-        """Starts the ADB server
+        """
+        Starts the ADB server and makes sure the android device (emulator) is attached.
+
+        Returns:
+            (boolean): True if everything is ready, False otherwise.
         """
         cmd = ['adb', 'start-server']
         subprocess.call(cmd)
-        cmd = ['adb', 'connect', self.service]
+        #checking the emulator state
+        cmd = ['adb', '-e', 'get-state']
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
-        str = process.communicate()[0].decode()
-        return str.find('unable') == -1
+        #processing only the std_out data, if there is an error it will be sent to std_err,
+        #so if the get-state fails ('error: no emulators found') => state=''
+        state = process.communicate()[0].decode()
+        if state.find('device') == -1:
+            #the emulator is not attached, trying to connect using service info
+            cmd = ['adb', 'connect', self.service]
+            process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
+            std_out = process.communicate()[0].decode()
+            return std_out.find('connected') == 0
+        else:
+            return True
 
     @staticmethod
     def kill_server():
@@ -45,7 +59,7 @@ class Adb(object):
         Returns:
             tuple: A tuple containing stdoutdata and stderrdata
         """
-        cmd = ['adb', 'exec-out'] + args.split(' ')
+        cmd = ['adb', '-e', 'exec-out'] + args.split(' ')
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell = True)
         return process.communicate()[0]
 
@@ -56,6 +70,6 @@ class Adb(object):
         Args:
             args (string): Command to execute.
         """
-        cmd = ['adb', 'shell'] + args.split(' ')
+        cmd = ['adb', '-e', 'shell'] + args.split(' ')
         Logger.log_debug(str(cmd))
         subprocess.call(cmd, shell=True)
