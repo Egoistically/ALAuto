@@ -51,6 +51,8 @@ class RetirementModule(object):
                     self.retire_ships()
                     Utils.touch_randomly(Region(54, 57, 67, 67))
                     return
+            
+            Utils.update_screen()
 
     def retire_ships(self):
         while True:

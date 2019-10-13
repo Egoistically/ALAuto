@@ -1,6 +1,7 @@
 import cv2
 import numpy
 import time
+from imutils import contours, grab_contours
 from multiprocessing.pool import ThreadPool
 from datetime import datetime, timedelta
 from random import uniform, gauss, randint
@@ -26,6 +27,7 @@ class Region(object):
         self.h = h
 
 screen = None
+last_ocr = ''
 
 class Utils(object):
 
@@ -93,6 +95,61 @@ class Utils(object):
         else:
             Utils.script_sleep(time)
         Utils.update_screen()
+
+    @staticmethod
+    def read_numbers(x, y, w, h, max_digits=5):
+        """ Method to ocr numbers.
+            Returns int.
+        """
+        global last_ocr
+        text = []
+
+        crop = screen[y:y+h, x:x+w]
+        crop = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        thresh = cv2.threshold(crop, 0, 255, cv2.THRESH_OTSU)[1]
+
+        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        cnts = grab_contours(cnts)
+        cnts = contours.sort_contours(cnts, method="left-to-right")[0]
+
+        if len(cnts) > max_digits:
+            return 0
+
+        for c in cnts:
+            scores = []
+
+            (x, y, w, h) = cv2.boundingRect(c)
+            roi = thresh[y:y + h, x:x + w]
+            resized = cv2.resize(roi, (50, 94))
+
+            for x in range(0,10):
+                template = cv2.imread("assets/numbers/{}.png".format(x), 0)
+
+                result = cv2.matchTemplate(resized, template, cv2.TM_CCOEFF)
+                (_, score, _, _) = cv2.minMaxLoc(result)
+                scores.append(score)
+
+            text.append(str(numpy.argmax(scores)))
+
+        last_ocr = "".join(text)
+        return int(last_ocr)
+
+    @classmethod
+    def check_oil(cls, limit=0):
+        oil = []
+
+        while len(oil) < 3:
+            _res = int(cls.read_numbers(970, 35, 121, 38))
+            if _res != 0: 
+                oil.append(_res)
+
+        result = max(set(oil), key=oil.count)
+
+        if limit > result:
+            Logger.log_error("Reached oil limit.")
+            return False
+
+        return result
 
     @staticmethod
     def find(image, similarity=DEFAULT_SIMILARITY):

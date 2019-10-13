@@ -83,6 +83,10 @@ class CombatModule(object):
                 Logger.log_warning("Dock is full, need to retire.")
                 self.stats.increment_combat_attempted()
                 break
+            if Utils.find("menu/button_normal_mode"):
+                Logger.log_debug("Disabling hard mode.")
+                Utils.touch_randomly(Region(88, 990, 80, 40))
+                Utils.wait_update_screen(1)
             if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
                 continue
@@ -106,11 +110,6 @@ class CombatModule(object):
         Also checks if hard mode is enabled.
         """
         _map = 0
-
-        if Utils.find("menu/button_normal_mode"):
-            Logger.log_debug("Disabling hard mode.")
-            Utils.touch_randomly(Region(88, 990, 80, 40))
-            Utils.wait_update_screen(1)
 
         if not self.chapter_map[0].isdigit():
             Utils.find_and_touch("menu/button_event")
@@ -212,6 +211,7 @@ class CombatModule(object):
         Logger.log_msg("Moving towards objective.")
         count = 0
         location = [target_info[0], target_info[1]]
+        Utils.script_sleep(1)
 
         while True:
             Utils.update_screen()
@@ -238,12 +238,10 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-
             if event["combat/menu_formation"] or event["combat/menu_loading"]:
                 return 1
-
             else:
-                if count % 3 == 0:
+                if count != 0 and count % 3 == 0:
                     Utils.touch(location)
                 if count > 21:
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
@@ -314,7 +312,7 @@ class CombatModule(object):
             if Utils.find("commission/button_confirm"):
                 Utils.touch_randomly(Region(1065, 732, 235, 68))
                 continue
-            if Utils.find("menu/button_hard_mode"):
+            if Utils.find("menu/attack"):
                 return
 
     def clear_map(self):
