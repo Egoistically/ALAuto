@@ -29,7 +29,7 @@ class Adb(object):
         subprocess.call(cmd)
         #checking the emulator state
         cmd = ['adb', '-e', 'get-state']
-        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
+        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell=True)
         #processing only the std_out data, if there is an error it will be sent to std_err,
         #so if the get-state fails ('error: no emulators found') => state=''
         state = process.communicate()[0].decode()
