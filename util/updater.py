@@ -39,6 +39,8 @@ class UpdateUtil(object):
             except error.HTTPError as e:
                 Logger.log_error("Couldn't check for updates, {}.".format(e))
             
+        _file.close()
+
         if parse(version) < parse(latest_version):
             Logger.log_debug("Current version: " + version)
             Logger.log_debug("Latest version: " + latest_version)
