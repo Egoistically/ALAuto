@@ -185,14 +185,11 @@ while True:
     if Utils.find("commission/alert_completed"):
         script.run_commission_cycle()
         script.print_cycle_stats()
-        continue
     if Utils.find("mission/alert_completed"):
         script.run_mission_cycle()
-        continue
     if script.should_sortie():
         script.run_sortie_cycle()
         script.print_cycle_stats()
-        continue
     else:
         Logger.log_msg("Nothing to do, will check again in a few minutes.")
         Utils.script_sleep(300)
