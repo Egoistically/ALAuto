@@ -59,12 +59,13 @@ class Stats(object):
             return count
         return "{} ({:0.2f}/hr)".format(count, count / hours)
 
-    def print_stats(self):
+    def print_stats(self, oil):
         """Prints a summary of all the stats to console.
         """
         delta = datetime.now() - self.start_time
         hours = delta.total_seconds() / 3600
 
+        Logger.log_success("Current oil: " + str(oil))
         if self.config.commissions['enabled']:
             Logger.log_success(
                 "Commissions sent: {} / received: {}".format(

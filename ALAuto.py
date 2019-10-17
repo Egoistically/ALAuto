@@ -8,14 +8,15 @@ from modules.retirement import RetirementModule
 from modules.event import EventModule
 from datetime import datetime, timedelta
 from util.adb import Adb
+from util.updater import UpdateUtil
 from util.config import Config
 from util.logger import Logger
 from util.stats import Stats
 from util.utils import Utils, Region
 
-
 class ALAuto(object):
     modules = {
+        'updates': None,
         'combat': None,
         'commissions': None,
         'enhancement': None,
@@ -34,6 +35,8 @@ class ALAuto(object):
         """
         self.config = config
         self.stats = Stats(config)
+        if self.config.updates['enabled']:
+            self.modules['updates'] = UpdateUtil(self.config)
         if self.config.combat['enabled']:
             self.modules['combat'] = CombatModule(self.config, self.stats)
         if self.config.commissions['enabled']:
@@ -48,6 +51,32 @@ class ALAuto(object):
             self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
         self.next_combat = datetime.now()
+
+    def run_update_check(self):
+        if self.modules['updates']:
+            if self.modules['updates'].checkUpdate():
+                Logger.log_warning("A new release is available, please check the github.")
+
+    def should_sortie(self):
+        """Method to check wether bot should combat or not.
+        """
+        return script.next_combat != 0 and script.next_combat < datetime.now() and \
+            Utils.check_oil(self.config.combat['oil_limit'])
+
+    def run_sortie_cycle(self):
+        """Method to run all cycles related to combat.
+        """
+        self.run_event_cycle()
+        self.run_combat_cycle()
+        self.run_enhancement_cycle()
+        self.run_retirement_cycle()
+
+        while not Utils.find("menu/button_battle"):
+            Utils.touch_randomly(Region(54, 57, 67, 67))
+            Utils.script_sleep(1)
+            Utils.update_screen()
+        
+        Utils.script_sleep(1)
 
     def run_combat_cycle(self):
         """Method to run the combat cycle.
@@ -106,7 +135,7 @@ class ALAuto(object):
         """Method to print the cycle stats"
         """
         if self.print_stats_check:
-            self.stats.print_stats()
+            self.stats.print_stats(Utils.check_oil())
         self.print_stats_check = False
 
 # check run-time args
@@ -135,6 +164,7 @@ if args:
         Adb.enable_legacy(Adb)
 
 script = ALAuto(config)
+script.run_update_check()
 
 Adb.service = config.network['service']
 adb = Adb()
@@ -157,11 +187,8 @@ while True:
         script.print_cycle_stats()
     if Utils.find("mission/alert_completed"):
         script.run_mission_cycle()
-    if script.next_combat != 0 and script.next_combat < datetime.now():
-        script.run_event_cycle()
-        script.run_combat_cycle()
-        script.run_enhancement_cycle()
-        script.run_retirement_cycle()
+    if script.should_sortie():
+        script.run_sortie_cycle()
         script.print_cycle_stats()
     else:
         Logger.log_msg("Nothing to do, will check again in a few minutes.")

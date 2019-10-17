@@ -22,6 +22,7 @@ class Config(object):
         self.initialized = False
         self.scheduled_sleep = {}
         self.scheduled_stop = {}
+        self.updates = {'enabled': False}
         self.combat = {'enabled': False}
         self.commissions = {'enabled': False}
         self.enhancement = {'enabled': False}
@@ -37,10 +38,11 @@ class Config(object):
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
 
+        if config.getboolean('Updates', 'Enabled'):
+            self._read_updates(config)
+
         if config.getboolean('Combat', 'Enabled'):
             self._read_combat(config)
-        else:
-            self.combat = {'enabled': False}
 
         self.commissions['enabled'] = config.getboolean('Modules', 'Commissions')
         self.enhancement['enabled'] = config.getboolean('Modules', 'Enhancement')
@@ -49,8 +51,6 @@ class Config(object):
 
         if config.getboolean('Events', 'Enabled'):
             self._read_event(config)
-        else:
-            self.events = {'enabled': False}
 
         self.validate()
         if (self.ok and not self.initialized):
@@ -68,6 +68,14 @@ class Config(object):
                 Logger.log_warning("Config change detected. Hot-reloading.")
                 self.changed = True
 
+    def _read_updates(self, config):
+        """Method to parse the Combat settings of the passed in config.
+        Args:
+            config (ConfigParser): ConfigParser instance
+        """
+        self.updates['enabled'] = True
+        self.updates['channel'] = config.get('Updates', 'Channel')
+
     def _read_combat(self, config):
         """Method to parse the Combat settings of the passed in config.
         Args:
@@ -75,6 +83,7 @@ class Config(object):
         """
         self.combat['enabled'] = True
         self.combat['map'] = config.get('Combat', 'Map')
+        self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
 
     def _read_event(self, config):
@@ -107,18 +116,33 @@ class Config(object):
             Logger.log_msg("Validating config")
         self.ok = True
 
+        if self.updates['enabled']:
+            if self.updates['channel'] != 'Release' and self.updates['channel'] != 'Development':
+                self.ok = False
+                Logger.log_error("Invalid update channel, please check the wiki.")
+
         if self.combat['enabled']:
             map = self.combat['map'].split('-')
             valid_chapters = list(range(1, 9)) + ['E']
             valid_levels = list(range(1, 5)) + ['A1', 'A2', 'A3', 'A4',
-                                                 'B1', 'B2', 'B3', 'B4',
-                                                 'C1', 'C2', 'C3', 'C4',
-                                                 'D1', 'D2', 'D3', 'D4']
+                                                'B1', 'B2', 'B3', 'B4',
+                                                'C1', 'C2', 'C3', 'C4',
+                                                'D1', 'D2', 'D3', 'D4',
+                                                'SP1', 'SP2', 'SP3']
             if (try_cast_to_int(map[0]) not in valid_chapters or
-               try_cast_to_int(map[1]) not in valid_levels):
+                try_cast_to_int(map[1]) not in valid_levels):
                 self.ok = False
                 Logger.log_error("Invalid Map Selected: '{}'."
-                                 .format(self.combat['map']))
+                                .format(self.combat['map']))
+            
+            if not isinstance(self.combat['oil_limit'], int):
+                self.ok = False
+                Logger.log_error("Oil limit must be an integer.")
+
+        if self.events['enabled']:
+            if self.events['name'] is not 'Crosswave' or ',' not in self.events['levels']:
+                self.ok = False
+                Logger.log_error("Invalid event settings, please check the wiki.")
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.
