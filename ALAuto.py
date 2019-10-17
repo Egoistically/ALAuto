@@ -167,6 +167,7 @@ script = ALAuto(config)
 script.run_update_check()
 
 Adb.service = config.network['service']
+Adb.device = '-d' if (Adb.service == 'PHONE') else '-e'
 adb = Adb()
 if adb.init():
     Logger.log_msg('Sucessfully connected to the service.')

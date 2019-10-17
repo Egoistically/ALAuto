@@ -5,6 +5,7 @@ class Adb(object):
 
     legacy = False
     service = ''
+    device = ''
 
     def init(self):
         """Kills and starts a new ADB server
@@ -28,7 +29,7 @@ class Adb(object):
         cmd = ['adb', 'start-server']
         subprocess.call(cmd)
         #checking the emulator state
-        cmd = ['adb', '-e', 'get-state']
+        cmd = ['adb', self.device, 'get-state']
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell=True)
         #processing only the std_out data, if there is an error it will be sent to std_err,
         #so if the get-state fails ('error: no emulators found') => state=''
@@ -59,7 +60,7 @@ class Adb(object):
         Returns:
             tuple: A tuple containing stdoutdata and stderrdata
         """
-        cmd = ['adb', '-e', 'exec-out'] + args.split(' ')
+        cmd = ['adb', Adb.device, 'exec-out'] + args.split(' ')
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell = True)
         return process.communicate()[0]
 
@@ -70,6 +71,6 @@ class Adb(object):
         Args:
             args (string): Command to execute.
         """
-        cmd = ['adb', '-e', 'shell'] + args.split(' ')
+        cmd = ['adb', Adb.device, 'shell'] + args.split(' ')
         Logger.log_debug(str(cmd))
         subprocess.call(cmd, shell=True)

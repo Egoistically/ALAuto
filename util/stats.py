@@ -39,7 +39,7 @@ class Stats(object):
         pretty_string = "{} days ".format(delta.days) if delta.days else ""
         hours, remainder = divmod(delta.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
-        pretty_string += "{} hours {} minutes".format(
+        pretty_string += "{} hours {} minutes {} seconds".format(
             hours, minutes, seconds)
         return pretty_string
 
