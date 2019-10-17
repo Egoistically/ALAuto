@@ -34,8 +34,7 @@ class EventModule(object):
 
             while not Utils.find("menu/operation"):
                 Utils.find_and_touch("event/crosswave/menu_button")
-                Utils.script_sleep(1)
-                Utils.update_screen()
+                Utils.wait_update_screen(1)
 
             Logger.log_msg("Event levels: " + str(self.levels))
 
@@ -82,11 +81,7 @@ class EventModule(object):
             
             Logger.log_msg("Finished all event combats, going back to menu.")
 
-            while not Utils.find("menu/button_battle"):
-                Utils.touch_randomly(Region(54, 57, 67, 67))
-                Utils.script_sleep(1)
-                Utils.update_screen()
-
+            Utils.menu_navigate("menu/button_battle")
             self.finished = True
             return
 

@@ -22,6 +22,7 @@ class CombatModule(object):
         self.movement_event = {}
         self.chapter_map = self.config.combat['map']
         self.region = {
+            'hide_strat_menu': Region(1617, 593, 4, 146),
             'menu_button_battle': Region(1517, 442, 209, 206),
             'map_summary_go': Region(1289, 743, 280, 79),
             'fleet_menu_go': Region(1485, 872, 270, 74),
@@ -47,8 +48,12 @@ class CombatModule(object):
             Utils.wait_update_screen()
 
             if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(Region(1312, 263, 64, 56))
+                Utils.touch_randomly(Region(1326, 274, 35, 35))
                 self.exit = 3
+            if Utils.find("combat/alert_morale_low"):
+                Utils.touch_randomly(Region(1326, 274, 35, 35))
+                self.exit = 2
+                break
             if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
@@ -72,15 +77,9 @@ class CombatModule(object):
                     self.stats.increment_combat_attempted()
                     break
             if self.exit == 1:
-                Logger.log_msg("Boss successfully defeated, going back to menu.")
                 self.stats.increment_combat_done()
                 break
-            if self.exit == 2:
-                Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
-                self.stats.increment_combat_attempted()
-                break
-            if self.exit == 3:
-                Logger.log_warning("Dock is full, need to retire.")
+            if self.exit > 1:
                 self.stats.increment_combat_attempted()
                 break
             if Utils.find("menu/button_normal_mode"):
@@ -95,11 +94,7 @@ class CombatModule(object):
                 continue
 
         Utils.script_sleep(1)
-
-        while not Utils.find("menu/button_battle"):
-            Utils.touch_randomly(Region(54, 57, 67, 67))
-            Utils.script_sleep(1)
-            Utils.update_screen()
+        Utils.menu_navigate("menu/button_battle")
 
         return self.exit
 
@@ -147,7 +142,7 @@ class CombatModule(object):
 
             if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
                 self.retreat_handler()
-                return
+                return False
             else:
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 Utils.script_sleep(1)
@@ -185,7 +180,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["combat_end_confirm"])
                 Utils.script_sleep(1)
                 if boss:
-                    return
+                    return True
                 Utils.update_screen()
             if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
@@ -193,7 +188,7 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/button_retreat"):
                 Utils.script_sleep(3)
-                Utils.touch_randomly(Region(1617, 593, 4, 146))
+                Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
 
     def movement_handler(self, target_info):
@@ -230,6 +225,9 @@ class CombatModule(object):
             if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(Region(661, 840, 598, 203))
+                if Utils.find("combat/menu_emergency"):
+                    Utils.script_sleep(1)
+                    Utils.touch_randomly(self.region["hide_strat_menu"])
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
                     return 0
@@ -264,8 +262,7 @@ class CombatModule(object):
         closest_to_boss = self.get_closest_target(self.blacklist, coords)
 
         Utils.touch(closest_to_boss)
-        Utils.script_sleep(1)
-        Utils.update_screen()
+        Utils.wait_update_screen(1)
 
         if Utils.find("combat/alert_unable_reach"):
             Logger.log_warning("Unable to reach next to boss.")
@@ -320,7 +317,7 @@ class CombatModule(object):
         Utils.script_sleep(2.5)
 
         #hide strat menu
-        Utils.touch_randomly(Region(1617, 593, 4, 146))
+        Utils.touch_randomly(self.region["hide_strat_menu"])
         #swipe map to the left
         Utils.swipe(960, 540, 1300, 540, 100)
 
@@ -388,8 +385,8 @@ class CombatModule(object):
                 continue
             else:
                 self.movement_handler(boss_info)
-                self.battle_handler(boss=True)
-                self.exit = 1
+                if self.battle_handler(boss=True):
+                    self.exit = 1
                 return
 
     def get_enemies(self, blacklist=[]):

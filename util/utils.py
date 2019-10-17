@@ -101,7 +101,6 @@ class Utils(object):
         """ Method to ocr numbers.
             Returns int.
         """
-        global last_ocr
         text = []
 
         crop = screen[y:y+h, x:x+w]
@@ -120,36 +119,56 @@ class Utils(object):
 
             (x, y, w, h) = cv2.boundingRect(c)
             roi = thresh[y:y + h, x:x + w]
-            resized = cv2.resize(roi, (50, 94))
+            row, col = roi.shape[:2]
+
+            width = round(abs((50 - col)) / 2) + 5
+            height = round(abs((94 - row)) / 2) + 5
+            resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
             for x in range(0,10):
                 template = cv2.imread("assets/numbers/{}.png".format(x), 0)
 
-                result = cv2.matchTemplate(resized, template, cv2.TM_CCOEFF)
+                result = cv2.matchTemplate(resized, template, cv2.TM_CCOEFF_NORMED)
                 (_, score, _, _) = cv2.minMaxLoc(result)
                 scores.append(score)
 
             text.append(str(numpy.argmax(scores)))
 
-        last_ocr = "".join(text)
-        return int(last_ocr)
+        text = "".join(text)
+        return int(text)
 
     @classmethod
     def check_oil(cls, limit=0):
+        global last_ocr
         oil = []
 
-        while len(oil) < 3:
+        cls.menu_navigate("menu/button_battle")
+
+        while len(oil) < 5:
             _res = int(cls.read_numbers(970, 35, 121, 38))
-            if _res != 0: 
+            if last_ocr == '' or abs(_res - last_ocr) < 400: 
                 oil.append(_res)
 
-        result = max(set(oil), key=oil.count)
+        last_ocr = max(set(oil), key=oil.count)
+        Logger.log_debug("Current oil: " + str(last_ocr))
 
-        if limit > result:
-            Logger.log_error("Reached oil limit.")
+        if limit > last_ocr:
+            Logger.log_error("Oil below limit: " + str(last_ocr))
             return False
 
-        return result
+        return last_ocr
+
+    @staticmethod
+    def menu_navigate(image):
+        Utils.update_screen()
+
+        while not Utils.find(image):
+            if image == "menu/button_battle":
+                Utils.touch_randomly(Region(54, 57, 67, 67))
+                Utils.wait_update_screen(0.5)
+
+        Utils.wait_update_screen(1)
+        return
 
     @staticmethod
     def find(image, similarity=DEFAULT_SIMILARITY):

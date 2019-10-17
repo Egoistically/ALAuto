@@ -71,13 +71,6 @@ class ALAuto(object):
         self.run_enhancement_cycle()
         self.run_retirement_cycle()
 
-        while not Utils.find("menu/button_battle"):
-            Utils.touch_randomly(Region(54, 57, 67, 67))
-            Utils.script_sleep(1)
-            Utils.update_screen()
-        
-        Utils.script_sleep(1)
-
     def run_combat_cycle(self):
         """Method to run the combat cycle.
         """
@@ -86,13 +79,17 @@ class ALAuto(object):
 
             if result == 1:
                 # if boss is defeated
+                Logger.log_msg("Boss successfully defeated, going back to menu.")
                 self.print_stats_check = True
             if result == 2:
                 # if morale is too low
+                Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
                 self.next_combat = datetime.now() + timedelta(hours=1)
                 self.print_stats_check = False
             if result == 3:
                 # if dock is full
+                Logger.log_warning("Dock is full, need to retire.")
+
                 if self.modules['retirement']:
                     self.modules['retirement'].retirement_logic_wrapper(True)
                 else:
