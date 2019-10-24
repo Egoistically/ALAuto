@@ -83,18 +83,18 @@ class Utils(object):
             else:
                 screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
 
-    @staticmethod
-    def wait_update_screen(time=None):
+    @classmethod
+    def wait_update_screen(cls, time=None):
         """Delayed update screen.
 
         Args: 
             time (int, optional): seconds of delay.
         """
         if time is None:
-            Utils.script_sleep()
+            cls.script_sleep()
         else:
-            Utils.script_sleep(time)
-        Utils.update_screen()
+            cls.script_sleep(time)
+        cls.update_screen()
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -124,7 +124,7 @@ class Utils(object):
             width = round(abs((50 - col)) / 2) + 5
             height = round(abs((94 - row)) / 2) + 5
             resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
-
+            
             for x in range(0,10):
                 template = cv2.imread("assets/numbers/{}.png".format(x), 0)
 
@@ -146,7 +146,7 @@ class Utils(object):
 
         while len(oil) < 5:
             _res = int(cls.read_numbers(970, 35, 121, 38))
-            if last_ocr == '' or abs(_res - last_ocr) < 400: 
+            if last_ocr == '' or abs(_res - last_ocr) < 600: 
                 oil.append(_res)
 
         last_ocr = max(set(oil), key=oil.count)
@@ -158,16 +158,15 @@ class Utils(object):
 
         return last_ocr
 
-    @staticmethod
-    def menu_navigate(image):
-        Utils.update_screen()
+    @classmethod
+    def menu_navigate(cls, image):
+        cls.update_screen()
 
-        while not Utils.find(image):
+        while not cls.find(image):
             if image == "menu/button_battle":
-                Utils.touch_randomly(Region(54, 57, 67, 67))
-                Utils.wait_update_screen(0.5)
+                cls.touch_randomly(Region(54, 57, 67, 67))
+                cls.wait_update_screen(1)
 
-        Utils.wait_update_screen(1)
         return
 
     @staticmethod

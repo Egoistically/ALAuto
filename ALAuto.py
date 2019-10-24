@@ -167,7 +167,7 @@ Adb.service = config.network['service']
 Adb.device = '-d' if (Adb.service == 'PHONE') else '-e'
 adb = Adb()
 if adb.init():
-    Logger.log_msg('Sucessfully connected to the service.')
+    Logger.log_msg('Successfully connected to the service.')
 else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()
