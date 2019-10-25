@@ -142,6 +142,9 @@ class Utils(object):
         global last_ocr
         oil = []
 
+        if limit == 0:
+            return True
+
         cls.menu_navigate("menu/button_battle")
 
         while len(oil) < 5:

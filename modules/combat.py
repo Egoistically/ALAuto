@@ -86,7 +86,7 @@ class CombatModule(object):
                 Logger.log_debug("Disabling hard mode.")
                 Utils.touch_randomly(Region(88, 990, 80, 40))
                 Utils.wait_update_screen(1)
-            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
+            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.8):
                 Logger.log_msg("Found specified map.")
                 continue
             else:
