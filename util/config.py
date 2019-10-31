@@ -116,6 +116,11 @@ class Config(object):
             Logger.log_msg("Validating config")
         self.ok = True
 
+        if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
+            and not self.missions['enabled'] and not self.retirement['enabled'] and not self.events['enabled']:
+            Logger.log_error("All modules are disabled, consider checking your config.")
+            self.ok = False
+
         if self.updates['enabled']:
             if self.updates['channel'] != 'Release' and self.updates['channel'] != 'Development':
                 self.ok = False
