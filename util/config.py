@@ -145,7 +145,7 @@ class Config(object):
                 Logger.log_error("Oil limit must be an integer.")
 
         if self.events['enabled']:
-            if self.events['name'] is not 'Crosswave' or ',' not in self.events['levels']:
+            if self.events['name'] != 'Crosswave' or ',' not in self.events['levels']:
                 self.ok = False
                 Logger.log_error("Invalid event settings, please check the wiki.")
 
