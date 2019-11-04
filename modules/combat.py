@@ -175,6 +175,9 @@ class CombatModule(object):
                 Logger.log_msg("Received ELITE ship as drop.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
+            if Utils.find("combat/commander"):
+                Utils.touch_randomly(self.region["combat_end_confirm"])
+                continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
                 Utils.touch_randomly(self.region["combat_end_confirm"])
