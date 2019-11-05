@@ -1,6 +1,5 @@
 from urllib import error, request
 import json
-from setuptools._vendor.packaging.version import parse
 from util.logger import Logger
 
 class UpdateUtil(object):
@@ -41,7 +40,7 @@ class UpdateUtil(object):
             
         _file.close()
 
-        if parse(version) < parse(latest_version):
+        if version != latest_version:
             Logger.log_debug("Current version: " + version)
             Logger.log_debug("Latest version: " + latest_version)
 

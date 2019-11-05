@@ -175,9 +175,6 @@ class CombatModule(object):
                 Logger.log_msg("Received ELITE ship as drop.")
                 Utils.touch_randomly(Region(1228, 103, 692, 735))
                 continue
-            if Utils.find("combat/commander"):
-                Utils.touch_randomly(self.region["combat_end_confirm"])
-                continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
                 Utils.touch_randomly(self.region["combat_end_confirm"])
@@ -193,6 +190,9 @@ class CombatModule(object):
                 Utils.script_sleep(3)
                 Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
+            if Utils.find("combat/commander"):
+                Utils.touch_randomly(self.region["combat_end_confirm"])
+                continue
 
     def movement_handler(self, target_info):
         """
