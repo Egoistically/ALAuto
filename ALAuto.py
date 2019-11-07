@@ -149,12 +149,12 @@ parser.add_argument('-l', '--legacy',
                     help='Enables sed usage.', action='store_true')
 args = parser.parse_args()
 
-config = Config('config.ini')
-
 # check args, and if none provided, load default config
 if args:
     if args.config:
         config = Config(args.config)
+    else:
+        config = Config('config.ini')
     if args.debug:
         Logger.log_info("Enabled debugging.")
         Logger.enable_debugging(Logger)
