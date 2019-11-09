@@ -117,7 +117,7 @@ class Config(object):
         self.ok = True
 
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
-            and not self.missions['enabled'] and not self.retirement['enabled'] and not self.events['enabled']:
+           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.events['enabled']:
             Logger.log_error("All modules are disabled, consider checking your config.")
             self.ok = False
 
@@ -139,13 +139,13 @@ class Config(object):
                 self.ok = False
                 Logger.log_error("Invalid Map Selected: '{}'."
                                 .format(self.combat['map']))
-            
+
             if not isinstance(self.combat['oil_limit'], int):
                 self.ok = False
                 Logger.log_error("Oil limit must be an integer.")
 
         if self.events['enabled']:
-            if self.events['name'] != 'Crosswave' or ',' not in self.events['levels']:
+            if self.events['name'] is not 'Crosswave' or ',' not in self.events['levels']:
                 self.ok = False
                 Logger.log_error("Invalid event settings, please check the wiki.")
 

@@ -87,7 +87,7 @@ class Utils(object):
     def wait_update_screen(cls, time=None):
         """Delayed update screen.
 
-        Args: 
+        Args:
             time (int, optional): seconds of delay.
         """
         if time is None:
@@ -124,7 +124,7 @@ class Utils(object):
             width = round(abs((50 - col)) / 2) + 5
             height = round(abs((94 - row)) / 2) + 5
             resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
-            
+
             for x in range(0,10):
                 template = cv2.imread("assets/numbers/{}.png".format(x), 0)
 
@@ -149,7 +149,7 @@ class Utils(object):
 
         while len(oil) < 5:
             _res = int(cls.read_numbers(970, 38, 101, 36))
-            if last_ocr == '' or abs(_res - last_ocr) < 600: 
+            if last_ocr == '' or abs(_res - last_ocr) < 600:
                 oil.append(_res)
 
         last_ocr = max(set(oil), key=oil.count)

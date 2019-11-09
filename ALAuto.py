@@ -97,7 +97,7 @@ class ALAuto(object):
                 else:
                     Logger.log_error("Retirement isn't enabled, exiting.")
                     sys.exit()
-        else: 
+        else:
             self.next_combat = 0
 
     def run_commission_cycle(self):
@@ -168,15 +168,20 @@ script.run_update_check()
 Adb.service = config.network['service']
 Adb.device = '-d' if (Adb.service == 'PHONE') else '-e'
 adb = Adb()
+
 if adb.init():
     Logger.log_msg('Successfully connected to the service.')
+
+    if not Adb.exec_out('wm size').decode('utf-8').strip()[15:] == '1920x1080':
+        Logger.log_error("Resolution is not 1920x1080, please change it.")
+        sys.exit()
 else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()
 
 while True:
     Utils.update_screen()
-    
+
     # temporal solution to event alerts
     if not Utils.find("menu/button_battle"):
         Utils.touch_randomly(Region(54, 57, 67, 67))

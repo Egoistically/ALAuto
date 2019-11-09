@@ -82,11 +82,11 @@ class CombatModule(object):
             if self.exit > 1:
                 self.stats.increment_combat_attempted()
                 break
-            if Utils.find("menu/button_normal_mode"):
+            if Utils.find("menu/button_normal_mode") and self.chapter_map[0].isdigit():
                 Logger.log_debug("Disabling hard mode.")
                 Utils.touch_randomly(Region(88, 990, 80, 40))
                 Utils.wait_update_screen(1)
-            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.8):
+            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
                 continue
             else:
@@ -100,23 +100,31 @@ class CombatModule(object):
 
     def reach_map(self):
         """
-        Method to move to the world where the specified map is located. 
-        Only works with worlds added to assets (from 1 to 8).
+        Method to move to the world where the specified map is located.
+        Only works with worlds added to assets (from 1 to 8) and some event maps.
         Also checks if hard mode is enabled.
         """
         _map = 0
 
         if not self.chapter_map[0].isdigit():
+            letter = self.chapter_map[2:3]
+            event_maps = ['A', 'B', 'C', 'D']
+
             Utils.find_and_touch("menu/button_event")
             Utils.wait_update_screen(1)
+
+            if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode") or \
+               event_maps.index(letter) > 1 and not Utils.find("menu/button_normal_mode"):
+                Utils.touch_randomly(Region(88, 990, 80, 40))
+                Utils.wait_update_screen(1)
         else:
-            for x in range(1, 9): 
+            for x in range(1, 9):
                 if Utils.find("maps/map_{}-1".format(x), 0.99):
                     _map = x
                     break
-            
+
             if _map != 0:
-                taps = int(self.chapter_map.split("-")[0]) - _map   
+                taps = int(self.chapter_map.split("-")[0]) - _map
                 for x in range(0, abs(taps)):
                     if taps >= 1:
                         Utils.touch_randomly(Region(1831, 547, 26, 26))
@@ -132,7 +140,7 @@ class CombatModule(object):
         else:
             Logger.log_error("Cannot find the specified map, please move to the world where it's located.")
             while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
-                Utils.wait_update_screen(1) 
+                Utils.wait_update_screen(1)
 
     def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
@@ -146,12 +154,12 @@ class CombatModule(object):
             else:
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 Utils.script_sleep(1)
-        
+
         Utils.script_sleep(4)
 
         while True:
             Utils.update_screen()
-            
+
             if Utils.find("combat/alert_lock"):
                 Logger.log_msg("Locking received ship.")
                 Utils.touch_randomly(Region(1086, 739, 200, 55))
@@ -257,7 +265,7 @@ class CombatModule(object):
         """
         Method called when the path to the boss fleet is obstructed by mobs: it procedes to switch targets to the mobs
         which are blocking the path.
-        
+
         Args:
             coords (list): coordinate_x, coordinate_y. These coordinates describe the boss location.
         """
@@ -280,7 +288,7 @@ class CombatModule(object):
                     self.blacklist.append(closest_to_boss)
                 else:
                     break
-                
+
             self.movement_handler(closest_enemy)
             self.battle_handler()
             return
@@ -291,7 +299,7 @@ class CombatModule(object):
 
     def retreat_handler(self):
         Logger.log_msg("Retreating...")
-        
+
         while True:
             Utils.update_screen()
 
@@ -360,7 +368,7 @@ class CombatModule(object):
                 Logger.log_warning("Unable to reach the target.")
                 self.blacklist.append(target_info[0:2])
                 target_info = None
-                continue  
+                continue
             else:
                 movement_result = self.movement_handler(target_info)
                 if movement_result == 1:
@@ -414,7 +422,7 @@ class CombatModule(object):
 
             self.l = l1 + l2 + l3 + l4 + l5
             sim -= 0.005
-        
+
         self.l = Utils.filter_similar_coords(self.l)
         return self.l
 
@@ -429,7 +437,7 @@ class CombatModule(object):
         """
         coords = [0, 0]
         count = 0
-        
+
         while coords == [0, 0]:
             Utils.update_screen()
             count += 1
@@ -437,7 +445,7 @@ class CombatModule(object):
             if count > 4:
                 Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
                 Utils.update_screen()
-            
+
             if Utils.find('combat/fleet_ammo', 0.8):
                 coords = Utils.find('combat/fleet_ammo', 0.8)
                 coords = [coords.x + 140, coords.y + 225 - count * 20]
@@ -470,13 +478,13 @@ class CombatModule(object):
             array: An array containing the x and y coordinates of the closest
             enemy to the specified location
         """
-        while True: 
+        while True:
             fleet_location = self.get_fleet_location()
             mystery_nodes = []
 
             if location == []:
                 location = fleet_location
-            
+
             enemies = self.get_enemies(blacklist)
 
             if mystery_node:
@@ -490,7 +498,7 @@ class CombatModule(object):
 
                     mystery_nodes = l1
                     sim -= 0.005
-                
+
                 mystery_nodes = Utils.filter_similar_coords(mystery_nodes)
 
             targets = enemies + mystery_nodes
@@ -522,9 +530,9 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
         thread_check_menu_loading = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_loading",))
-        
+
         Utils.multithreader([
-            thread_check_button_evade, thread_check_failed_evade, 
+            thread_check_button_evade, thread_check_failed_evade,
             thread_check_alert_info, thread_check_item_found,
             thread_check_menu_formation, thread_check_menu_loading])
 

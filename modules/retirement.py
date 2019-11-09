@@ -29,7 +29,7 @@ class RetirementModule(object):
 
             while True:
                 Utils.update_screen()
-                
+
                 if Utils.find("menu/button_sort"):
                     # Tap menu retire button
                     Utils.touch_randomly(Region(549, 735, 215, 64))
@@ -51,7 +51,7 @@ class RetirementModule(object):
                     self.retire_ships()
                     Utils.touch_randomly(Region(54, 57, 67, 67))
                     return
-            
+
             Utils.update_screen()
 
     def retire_ships(self):
@@ -87,7 +87,7 @@ class RetirementModule(object):
                 continue
 
     def select_ships(self):
-        Logger.log_msg("Selecting ships for retirement.") 
+        Logger.log_msg("Selecting ships for retirement.")
 
         for i in range(0, 7):
             Utils.touch_randomly(Region(209 + (i * 248), 238, 70, 72))

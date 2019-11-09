@@ -29,7 +29,7 @@ class EnhancementModule(object):
 
             while True:
                 Utils.update_screen()
-                
+
                 if Utils.find("menu/button_battle"):
                     Utils.touch_randomly(Region(297, 1015, 155, 40))
                     Utils.script_sleep(1)
@@ -47,7 +47,7 @@ class EnhancementModule(object):
         """
         Method that selects the first (leftmost of the first row) favorite ship and proceeds to enhance her.
         """
-        
+
         #selects ship
         Utils.touch_randomly(Region(209, 209, 80, 120))
         Utils.script_sleep(1)

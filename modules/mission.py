@@ -19,7 +19,7 @@ class MissionModule(object):
         }
 
     def mission_logic_wrapper(self):
-        while True: 
+        while True:
             Utils.update_screen()
 
             if Utils.find("mission/alert_completed"):

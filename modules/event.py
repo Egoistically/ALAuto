@@ -78,7 +78,7 @@ class EventModule(object):
                 if self.pre_combat_handler():
                     self.combat_handler()
                     Logger.log_msg("Finished easy crosswave combat.")
-            
+
             Logger.log_msg("Finished all event combats, going back to menu.")
 
             Utils.menu_navigate("menu/button_battle")
@@ -90,7 +90,7 @@ class EventModule(object):
         """
         while True:
             Utils.update_screen()
-            
+
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found event fleet go button.")
                 Utils.touch_randomly(self.region['menu_fleet_go'])
