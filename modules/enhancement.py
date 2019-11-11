@@ -95,6 +95,10 @@ class EnhancementModule(object):
 
         #tap the "enhance" button
         Utils.touch_randomly(self.region['enhance_orange_button'])
+        #the enhanced alert lasts about three seconds, so there's enough time to catch it
+        #even if the scripts sleeps for a little bit. This pause ensures the script does not take
+        #the screenshot before the alert is shown.
+        Utils.script_sleep(0.5)
         Utils.update_screen()
 
         if not Utils.find("enhancement/alert_enhanced", 0.85):
