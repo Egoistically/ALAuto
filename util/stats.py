@@ -65,7 +65,8 @@ class Stats(object):
         delta = datetime.now() - self.start_time
         hours = delta.total_seconds() / 3600
 
-        Logger.log_success("Current oil: " + str(oil))
+        if oil != 0:
+            Logger.log_success("Current oil: " + str(oil))
         if self.config.commissions['enabled']:
             Logger.log_success(
                 "Commissions sent: {} / received: {}".format(

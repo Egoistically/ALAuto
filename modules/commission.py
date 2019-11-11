@@ -90,7 +90,7 @@ class CommissionModule(object):
         while True:
             Utils.update_screen()
 
-            Utils.swipe(960, 680, 960, 400, 80)
+            Utils.swipe(960, 680, 960, 400, 300)
             Utils.touch_randomly(self.region["last_commission"])
             if not self.start_commission():
                 Logger.log_msg("No more commissions to start.")

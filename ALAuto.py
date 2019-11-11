@@ -134,7 +134,7 @@ class ALAuto(object):
         """Method to print the cycle stats"
         """
         if self.print_stats_check:
-            self.stats.print_stats(Utils.check_oil())
+            self.stats.print_stats(Utils.check_oil(self.config.combat['oil_limit']))
         self.print_stats_check = False
 
 # check run-time args
