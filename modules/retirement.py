@@ -15,6 +15,31 @@ class RetirementModule(object):
         self.stats = stats
         self.sorted = False
         self.last_retire = 0
+        self.region = {
+            'combat_sort_button': Region(549, 735, 215, 64),
+            'build_menu': Region(1452, 1007, 198, 52),
+            'retire_tab_1': Region(20, 661, 115, 99),
+            # retire_tab_2 is used when there is wishing well
+            'retire_tab_2': Region(30, 816, 94, 94),
+            'menu_nav_back': Region(54, 57, 67, 67),
+            'sort_filters_button': Region(1655, 14, 130, 51),
+            'common_ship_filter': Region(672, 724, 185, 41),
+            'rare_ship_filter': Region(911, 724, 185, 41),
+            'confirm_filter_button': Region(1090, 969, 220, 60),
+            #Region(209 + (i * 248), 238, 70, 72)
+            'select_ship_0': Region(209, 238, 70, 72),
+            'select_ship_1': Region(457, 238, 70, 72),
+            'select_ship_2': Region(705, 238, 70, 72),
+            'select_ship_3': Region(953, 238, 70, 72),
+            'select_ship_4': Region(1201, 238, 70, 72),
+            'select_ship_5': Region(1449, 238, 70, 72),
+            'select_ship_6': Region(1697, 238, 70, 72),
+            'confirm_retire_button': Region(1510, 978, 216, 54),
+            'confirm_selected_ships_button': Region(1412, 938, 218, 61),
+            'tap_to_continue': Region(661, 840, 598, 203),
+            'confirm_selected_equipment_button': Region(1320, 785, 232, 62),
+            'disassemble_button': Region(1099, 827, 225, 58)
+        }
 
     def retirement_logic_wrapper(self, forced=False):
         """Method that fires off the necessary child methods that encapsulates
@@ -32,24 +57,24 @@ class RetirementModule(object):
 
                 if Utils.find("menu/button_sort"):
                     # Tap menu retire button
-                    Utils.touch_randomly(Region(549, 735, 215, 64))
+                    Utils.touch_randomly(self.region['combat_sort_button'])
                     Utils.script_sleep(1)
                     continue
                 # In case function is called from menu
                 if Utils.find("menu/button_battle"):
-                    Utils.touch_randomly(Region(1452, 1007, 198, 52))
+                    Utils.touch_randomly(self.region['build_menu'])
                     Utils.script_sleep(1)
                     continue
                 if Utils.find("menu/build"):
                     if Utils.find("event/build_limited"):
-                        Utils.touch_randomly(Region(30, 816, 94, 94))
+                        Utils.touch_randomly(self.region['retire_tab_2'])
                     else:
-                        Utils.touch_randomly(Region(20, 661, 115, 99))
+                        Utils.touch_randomly(self.region['retire_tab_1'])
                     Utils.script_sleep(1)
                     continue
                 if Utils.find("retirement/selected_none"):
                     self.retire_ships()
-                    Utils.touch_randomly(Region(54, 57, 67, 67))
+                    Utils.touch_randomly(self.region['menu_nav_back'])
                     return
 
             Utils.update_screen()
@@ -60,24 +85,24 @@ class RetirementModule(object):
 
             if Utils.find("retirement/selected_none") and self.sorted == False:
                 Logger.log_debug("Opening sorting menu.")
-                Utils.touch_randomly(Region(1655, 14, 130, 51))
+                Utils.touch_randomly(self.region['sort_filters_button'])
                 continue
             if Utils.find("retirement/button_sort_all", 0.99):
                 Logger.log_debug("Changing sorting options for retirement.")
-                Utils.touch_randomly(Region(672, 724, 185, 41))
+                Utils.touch_randomly(self.region['common_ship_filter'])
                 Utils.script_sleep(0.5)
-                Utils.touch_randomly(Region(911, 724, 185, 41))
+                Utils.touch_randomly(self.region['rare_ship_filter'])
                 Utils.script_sleep(0.5)
                 continue
             if Utils.find("retirement/button_sort_common") and Utils.find("retirement/button_sort_rare"):
                 Logger.log_msg("Sorting options for retirement are correct.")
                 self.sorted = True
-                Utils.touch_randomly(Region(1090, 969, 220, 60))
+                Utils.touch_randomly(self.region['confirm_filter_button'])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("retirement/empty"):
                 Logger.log_msg("No ships left to retire.")
-                Utils.touch_randomly(Region(54, 57, 67, 67))
+                Utils.touch_randomly(self.region['menu_nav_back'])
                 return
             if Utils.find("retirement/selected_none"):
                 self.select_ships()
@@ -90,32 +115,32 @@ class RetirementModule(object):
         Logger.log_msg("Selecting ships for retirement.")
 
         for i in range(0, 7):
-            Utils.touch_randomly(Region(209 + (i * 248), 238, 70, 72))
+            Utils.touch_randomly(self.region['select_ship_{}'.format(i)])
 
     def handle_retirement(self):
-        Utils.touch_randomly(Region(1510, 978, 216, 54))
+        Utils.touch_randomly(self.region['confirm_retire_button'])
         items_found = 0
 
         while True:
             Utils.update_screen()
 
             if Utils.find("retirement/alert_bonus"):
-                Utils.touch_randomly(Region(1412, 938, 218, 61))
+                Utils.touch_randomly(self.region['confirm_selected_ships_button'])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("menu/item_found"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 Utils.script_sleep(1)
                 items_found += 1
                 if items_found > 1:
                     return
                 continue
             if Utils.find("menu/alert_info"):
-                Utils.touch_randomly(Region(1320, 785, 232, 62))
+                Utils.touch_randomly(self.region['confirm_selected_equipment_button'])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("retirement/button_disassemble"):
-                Utils.touch_randomly(Region(1099, 827, 225, 58))
+                Utils.touch_randomly(self.region['disassemble_button'])
                 Utils.script_sleep(1)
                 continue
 

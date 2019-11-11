@@ -22,7 +22,10 @@ class EventModule(object):
             'crosswave_ex': Region(1718, 246, 75, 75),
             'crosswave_hard': Region(1650, 449, 75, 75),
             'crosswave_normal': Region(1752, 612, 75, 75),
-            'crosswave_easy': Region(1683, 798, 75, 75)
+            'crosswave_easy': Region(1683, 798, 75, 75),
+            'tap_to_continue': Region(661, 840, 598, 203),
+            'dismiss_combat_finished': Region(725, 965, 647, 76),
+            'combat_end_confirm': Region(1520, 963, 216, 58)
         }
 
     def event_logic_wrapper(self):
@@ -112,18 +115,18 @@ class EventModule(object):
                 Utils.script_sleep(5)
                 continue
             if Utils.find("combat/menu_touch2continue"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 continue
             if Utils.find("menu/item_found"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
-                Utils.touch_randomly(Region(1520, 963, 216, 58))
+                Utils.touch_randomly(self.region['combat_end_confirm'])
                 Utils.script_sleep(1)
                 return
             if Utils.find("combat/menu_combat_finished"):
-                Utils.touch_randomly(Region(725, 965, 647, 76))
+                Utils.touch_randomly(self.region['dismiss_combat_finished'])
                 Utils.script_sleep(1)
                 continue

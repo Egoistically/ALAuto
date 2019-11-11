@@ -28,7 +28,10 @@ class CommissionModule(object):
             'commission_recommend': Region(1306, 483, 192, 92),
             'commission_start': Region(1543, 483, 191, 92),
             'oil_warning': Region(1073, 738, 221, 59),
-            'button_back': Region(48, 43, 76, 76)
+            'button_back': Region(48, 43, 76, 76),
+            'tap_to_continue': Region(661, 840, 598, 203),
+            'dismiss_side_tab': Region(970, 148, 370, 784),
+            'dismiss_message': Region(688, 11, 538, 55)
         }
 
     def commission_logic_wrapper(self):
@@ -60,7 +63,7 @@ class CommissionModule(object):
                 continue
             if Utils.find("commission/button_go") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_go").y):
                 Logger.log_msg("All commissions are running.")
-                Utils.touch_randomly(Region(970, 148, 370, 784))
+                Utils.touch_randomly(self.region["dismiss_side_tab"])
                 break
 
         Utils.wait_update_screen(1)
@@ -74,11 +77,11 @@ class CommissionModule(object):
             Utils.update_screen()
 
             if Utils.find("commission/alert_perfect"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region["tap_to_continue"])
                 self.stats.increment_commissions_received()
                 continue
             if Utils.find("menu/item_found"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region["tap_to_continue"])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("commission/alert_available"):
@@ -123,7 +126,7 @@ class CommissionModule(object):
 
             if Utils.find("commission/alert_begun"):
                 Logger.log_msg("Successfully started commission.")
-                Utils.touch_randomly(Region(688, 11, 538, 55))
+                Utils.touch_randomly(self.region["dismiss_message"])
                 self.stats.increment_commissions_started()
                 break
             if Utils.find("commission/button_confirm"):
