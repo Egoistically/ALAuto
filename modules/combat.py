@@ -30,6 +30,15 @@ class CombatModule(object):
             'combat_com_confirm': Region(848, 740, 224, 56),
             'combat_end_confirm': Region(1520, 963, 216, 58),
             'menu_combat_start': Region(1578, 921, 270, 70),
+            'tap_to_continue': Region(661, 840, 598, 203),
+            'close_info_dialog': Region(1326, 274, 35, 35),
+            'dismiss_ship_drop': Region(1228, 103, 692, 735),
+            'retreat_button': Region(1130, 985, 243, 60),
+            'dismiss_commission_dialog': Region(1065, 732, 235, 68),
+            'normal_mode_button': Region(88, 990, 80, 40),
+            'map_nav_right': Region(1831, 547, 26, 26),
+            'map_nav_left': Region(65, 547, 26, 26),
+            'lock_ship_button': Region(1086, 739, 200, 55),
             'menu_nav_back': Region(54, 57, 67, 67)
         }
 
@@ -48,10 +57,10 @@ class CombatModule(object):
             Utils.wait_update_screen()
 
             if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(Region(1326, 274, 35, 35))
+                Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 3
             if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(Region(1326, 274, 35, 35))
+                Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 2
                 break
             if Utils.find("commission/button_confirm"):
@@ -84,7 +93,7 @@ class CombatModule(object):
                 break
             if Utils.find("menu/button_normal_mode") and self.chapter_map[0].isdigit():
                 Logger.log_debug("Disabling hard mode.")
-                Utils.touch_randomly(Region(88, 990, 80, 40))
+                Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
             if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
@@ -118,7 +127,7 @@ class CombatModule(object):
                 Utils.touch_randomly(Region(88, 990, 80, 40))
                 Utils.wait_update_screen(1)
         else:
-            for x in range(1, 9):
+            for x in range(1, 11):
                 if Utils.find("maps/map_{}-1".format(x), 0.99):
                     _map = x
                     break
@@ -127,11 +136,11 @@ class CombatModule(object):
                 taps = int(self.chapter_map.split("-")[0]) - _map
                 for x in range(0, abs(taps)):
                     if taps >= 1:
-                        Utils.touch_randomly(Region(1831, 547, 26, 26))
+                        Utils.touch_randomly(self.region['map_nav_right'])
                         Logger.log_debug("Swiping to the right")
                         Utils.wait_update_screen()
                     else:
-                        Utils.touch_randomly(Region(65, 547, 26, 26))
+                        Utils.touch_randomly(self.region['map_nav_left'])
                         Logger.log_debug("Swiping to the left")
                         Utils.wait_update_screen()
 
@@ -162,26 +171,34 @@ class CombatModule(object):
 
             if Utils.find("combat/alert_lock"):
                 Logger.log_msg("Locking received ship.")
-                Utils.touch_randomly(Region(1086, 739, 200, 55))
+                Utils.touch_randomly(self.region['lock_ship_button'])
                 continue
             if Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
                 Utils.script_sleep(5)
                 continue
             if Utils.find("combat/menu_touch2continue"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 continue
             if Utils.find("menu/item_found"):
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 Utils.script_sleep(1)
                 continue
             if Utils.find("menu/drop_ssr"):
                 Logger.log_msg("Received SSR ship as drop.")
-                Utils.touch_randomly(Region(1228, 103, 692, 735))
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
                 continue
             if Utils.find("menu/drop_elite"):
                 Logger.log_msg("Received ELITE ship as drop.")
-                Utils.touch_randomly(Region(1228, 103, 692, 735))
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                continue
+            if Utils.find("menu/drop_rare"):
+                Logger.log_msg("Received new RARE ship as drop.")
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                continue
+            if Utils.find("menu/drop_common"):
+                Logger.log_msg("Received new COMMON ship as drop.")
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
                 continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
@@ -235,7 +252,7 @@ class CombatModule(object):
                 continue
             if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
-                Utils.touch_randomly(Region(661, 840, 598, 203))
+                Utils.touch_randomly(self.region['tap_to_continue'])
                 if Utils.find("combat/menu_emergency"):
                     Utils.script_sleep(1)
                     Utils.touch_randomly(self.region["hide_strat_menu"])
@@ -304,21 +321,21 @@ class CombatModule(object):
             Utils.update_screen()
 
             if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(Region(613, 731, 241, 69))
+                Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 2
                 continue
             if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(Region(1312, 263, 64, 56))
+                Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 3
                 continue
             if Utils.find("combat/menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
                 continue
             if Utils.find("combat/button_retreat"):
-                Utils.touch_randomly(Region(1130, 985, 243, 60))
+                Utils.touch_randomly(self.region['retreat_button'])
                 continue
             if Utils.find("commission/button_confirm"):
-                Utils.touch_randomly(Region(1065, 732, 235, 68))
+                Utils.touch_randomly(self.region['dismiss_commission_dialog'])
                 continue
             if Utils.find("menu/attack"):
                 return
@@ -339,7 +356,7 @@ class CombatModule(object):
 
             if Utils.find("combat/alert_unable_battle"):
                 Logger.log_warning("Failed to defeat enemy.")
-                Utils.touch_randomly(Region(869, 741, 185, 48))
+                Utils.touch_randomly(self.region['close_info_dialog'])
                 return False
             if self.exit is not 0:
                 return True

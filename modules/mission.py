@@ -15,7 +15,9 @@ class MissionModule(object):
             'mission_menu': Region(1206, 1001, 220, 64),
             'collect': Region(1551, 0, 111, 58),
             'first_claim': Region(1646, 174, 117, 102),
-            'button_back': Region(48, 43, 76, 76)
+            'button_back': Region(48, 43, 76, 76),
+            'tap_to_continue': Region(661, 840, 598, 203),
+            'dismiss_ship_drop': Region(1228, 103, 692, 735)
         }
 
     def mission_logic_wrapper(self):
@@ -28,11 +30,11 @@ class MissionModule(object):
                 continue
             if Utils.find("menu/drop_ssr"):
                 Logger.log_msg("Received SSR ship as reward.")
-                Utils.touch_randomly(Region(1228, 103, 692, 735))
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
                 continue
             if Utils.find("menu/drop_elite"):
                 Logger.log_msg("Received ELITE ship as reward.")
-                Utils.touch_randomly(Region(1228, 103, 692, 735))
+                Utils.touch_randomly(self.region['dismiss_ship_drop'])
                 continue
             while Utils.find("menu/missions"):
                 Utils.update_screen()
@@ -46,7 +48,7 @@ class MissionModule(object):
                     Utils.touch_randomly(self.region["first_claim"])
                     continue
                 if Utils.find("menu/item_found"):
-                    Utils.touch_randomly(Region(661, 840, 598, 203))
+                    Utils.touch_randomly(self.region["tap_to_continue"])
                     continue
                 else:
                     Logger.log_msg("No more missions to claim/collect.")
