@@ -52,7 +52,7 @@ class CommissionModule(object):
                 Logger.log_debug("Found commission complete button.")
                 self.completed_handler()
                 continue
-            if Utils.find("commission/alert_available") and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available").y):
+            if Utils.find("commission/alert_available", 0.9) and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available", 0.9).y):
                 Logger.log_debug("Found commission available indicator.")
                 Utils.touch_randomly(self.region["button_go"])
                 Utils.script_sleep(1)
@@ -84,7 +84,7 @@ class CommissionModule(object):
                 Utils.touch_randomly(self.region["tap_to_continue"])
                 Utils.script_sleep(1)
                 continue
-            if Utils.find("commission/alert_available"):
+            if Utils.find("commission/alert_available", 0.9):
                 Logger.log_debug("Finished completing commissions.")
                 Utils.script_sleep(0.5)
                 return

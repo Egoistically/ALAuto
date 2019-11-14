@@ -75,6 +75,7 @@ class CombatModule(object):
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
+                Utils.script_sleep(1)
                 continue
             if Utils.find("combat/button_go"):
                 Logger.log_debug("Found map summary go button.")
