@@ -61,7 +61,7 @@ class Adb(object):
             tuple: A tuple containing stdoutdata and stderrdata
         """
         cmd = ['adb', Adb.device, 'exec-out'] + args.split(' ')
-        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell = True)
+        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
         return process.communicate()[0]
 
     @staticmethod

@@ -188,18 +188,22 @@ class CombatModule(object):
             if Utils.find("menu/drop_ssr"):
                 Logger.log_msg("Received SSR ship as drop.")
                 Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                Utils.script_sleep(1)
                 continue
             if Utils.find("menu/drop_elite"):
                 Logger.log_msg("Received ELITE ship as drop.")
                 Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                Utils.script_sleep(1)
                 continue
             if Utils.find("menu/drop_rare"):
                 Logger.log_msg("Received new RARE ship as drop.")
                 Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                Utils.script_sleep(1)
                 continue
             if Utils.find("menu/drop_common"):
                 Logger.log_msg("Received new COMMON ship as drop.")
                 Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                Utils.script_sleep(1)
                 continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")

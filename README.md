@@ -5,11 +5,11 @@ Automates Combat, Commissions, Missions, Enhancement and Retiring.
 **This bot was made for EN server, other servers won't work with current assets.**
 
 ## Requirements on Windows
-* Python 3.X installed and added to PATH.
+* Python 3.7.X installed and added to PATH.
 * Latest [ADB](https://developer.android.com/studio/releases/platform-tools) added to PATH.
 * ADB debugging enabled emulator with **1920x1080 resolution** and **Android 5 or newer**.
 
-Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 60fps. If it does not work with your emulator please use Nox.
+Tested on Windows 10 with BlueStacks and Nox, [don't use Nox though](https://www.reddit.com/r/noxappplayer/comments/cz2133/segurazo_malware_with_nox_player/).
 
 ## Installation and Usage
 1. Clone or download this repository.
@@ -21,7 +21,7 @@ Tested and used on Windows 10 with Nox 6.3.0.2, Android 5.1 @ 60fps. If it does 
 Check the [Wiki](https://github.com/Egoistically/ALAuto/wiki/Config.ini-and-Modules-explanation) for more information. It's my first time making one, don't mind me.  
 
 ## Relevant information
-* It does not support multiple fleets, it only works when **one** fleet is selected. 
+* It does not support multiple fleets, it only works when **one** fleet is selected.
 * CPU usage might spike when searching for enemies, if it bothers you comment lines 191 to 199 in utils.py.
 * If you'd like to disable oil limit set it to `0`.
 
