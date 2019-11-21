@@ -171,8 +171,9 @@ adb = Adb()
 
 if adb.init():
     Logger.log_msg('Successfully connected to the service.')
+    res = ['1920x1080', '1080x1920']
 
-    if not Adb.exec_out('wm size').decode('utf-8').strip()[15:] == '1920x1080':
+    if Adb.exec_out('wm size').decode('utf-8').strip()[15:] not in res:
         Logger.log_error("Resolution is not 1920x1080, please change it.")
         sys.exit()
 else:
