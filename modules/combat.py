@@ -279,7 +279,7 @@ class CombatModule(object):
                     self.blacklist.append(location)
                     self.l.clear()
 
-                    location = self.get_closest_target(self.blacklist)
+                    location = self.get_closest_target(self.blacklist)[0:2]
                     count = 0
                 count += 1
 
