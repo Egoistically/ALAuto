@@ -1,4 +1,5 @@
 import math
+import numpy
 from util.logger import Logger
 from util.utils import Region, Utils
 from scipy import spatial
@@ -432,21 +433,26 @@ class CombatModule(object):
             Utils.update_screen()
 
             l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('enemy/fleet_level', sim - 0.15)))
-            l1 = [x for x in l1 if (x not in blacklist)]
+            l1 = [x for x in l1 if (self.filter_blacklist(x, blacklist))]
             l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_1_down', sim)))
-            l2 = [x for x in l2 if (x not in blacklist)]
+            l2 = [x for x in l2 if (self.filter_blacklist(x, blacklist))]
             l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
-            l3 = [x for x in l3 if (x not in blacklist)]
+            l3 = [x for x in l3 if (self.filter_blacklist(x, blacklist))]
             l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
-            l4 = [x for x in l4 if (x not in blacklist)]
+            l4 = [x for x in l4 if (self.filter_blacklist(x, blacklist))]
             l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
-            l5 = [x for x in l5 if (x not in blacklist)]
+            l5 = [x for x in l5 if (self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5
             sim -= 0.005
 
         self.l = Utils.filter_similar_coords(self.l)
         return self.l
+
+    def filter_blacklist(self, x, blacklist):
+        if blacklist:
+            return not numpy.all(numpy.isclose(x, blacklist, atol=20))
+        return True
 
     def get_fleet_location(self):
         """Method to get the fleet's current location. Note it uses the green
