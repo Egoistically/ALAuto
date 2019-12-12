@@ -30,14 +30,14 @@ class Adb(object):
         subprocess.call(cmd)
         #checking the emulator state
         cmd = ['adb', self.device, 'get-state']
-        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell=True)
+        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         #processing only the std_out data, if there is an error it will be sent to std_err,
         #so if the get-state fails ('error: no emulators found') => state=''
         state = process.communicate()[0].decode()
         if state.find('device') == -1:
             #the emulator is not attached, trying to connect using service info
             cmd = ['adb', 'connect', self.service]
-            process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
+            process = subprocess.Popen(cmd, stdout = subprocess.PIPE)
             std_out = process.communicate()[0].decode()
             return std_out.find('connected') == 0
         else:
@@ -61,7 +61,7 @@ class Adb(object):
             tuple: A tuple containing stdoutdata and stderrdata
         """
         cmd = ['adb', Adb.device, 'exec-out'] + args.split(' ')
-        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell=True)
+        process = subprocess.Popen(cmd, stdout = subprocess.PIPE)
         return process.communicate()[0]
 
     @staticmethod
@@ -73,4 +73,4 @@ class Adb(object):
         """
         cmd = ['adb', Adb.device, 'shell'] + args.split(' ')
         Logger.log_debug(str(cmd))
-        subprocess.call(cmd, shell=True)
+        subprocess.call(cmd)
