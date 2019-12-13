@@ -1,5 +1,4 @@
 import math
-import numpy
 from util.logger import Logger
 from util.utils import Region, Utils
 from scipy import spatial
@@ -277,10 +276,10 @@ class CombatModule(object):
                     Utils.touch(location)
                 if count > 21:
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
-                    self.blacklist.append(location)
+                    self.blacklist.append(location[0:2])
                     self.l.clear()
 
-                    location = self.get_closest_target(self.blacklist)[0:2]
+                    location = self.get_closest_target(self.blacklist)
                     count = 0
                 count += 1
 
@@ -300,7 +299,7 @@ class CombatModule(object):
 
         if Utils.find("combat/alert_unable_reach"):
             Logger.log_warning("Unable to reach next to boss.")
-            self.blacklist.append(closest_to_boss)
+            self.blacklist.append(closest_to_boss[0:2])
 
             while True:
                 closest_enemy = self.get_closest_target(self.blacklist)
@@ -308,7 +307,7 @@ class CombatModule(object):
                 Utils.update_screen()
 
                 if Utils.find("combat/alert_unable_reach"):
-                    self.blacklist.append(closest_to_boss)
+                    self.blacklist.append(closest_enemy[0:2])
                 else:
                     break
 
@@ -433,15 +432,15 @@ class CombatModule(object):
             Utils.update_screen()
 
             l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('enemy/fleet_level', sim - 0.15)))
-            l1 = [x for x in l1 if (self.filter_blacklist(x, blacklist))]
+            l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
             l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_1_down', sim)))
-            l2 = [x for x in l2 if (self.filter_blacklist(x, blacklist))]
+            l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
             l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
-            l3 = [x for x in l3 if (self.filter_blacklist(x, blacklist))]
+            l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
             l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
-            l4 = [x for x in l4 if (self.filter_blacklist(x, blacklist))]
+            l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
             l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
-            l5 = [x for x in l5 if (self.filter_blacklist(x, blacklist))]
+            l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5
             sim -= 0.005
@@ -449,10 +448,11 @@ class CombatModule(object):
         self.l = Utils.filter_similar_coords(self.l)
         return self.l
 
-    def filter_blacklist(self, x, blacklist):
-        if blacklist:
-            return not numpy.all(numpy.isclose(x, blacklist, atol=20))
-        return True
+    def filter_blacklist(self, coord, blacklist):
+        for y in blacklist:
+            if abs(coord[0] - y[0]) < 20 and abs(coord[1] - y[1]) < 20:
+                return True
+        return False
 
     def get_fleet_location(self):
         """Method to get the fleet's current location. Note it uses the green
@@ -522,10 +522,13 @@ class CombatModule(object):
                     Utils.update_screen()
 
                     l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, Utils.find_all('combat/question_mark', sim))
-                    l1 = [x for x in l1 if (x not in blacklist)]
+                    l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                     mystery_nodes = l1
                     sim -= 0.005
+
+                    if sim < 0.8:
+                        break
 
                 mystery_nodes = Utils.filter_similar_coords(mystery_nodes)
 
