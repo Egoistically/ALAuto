@@ -34,11 +34,13 @@ class ALAuto(object):
             config (Config): azurlane-auto Config instance
         """
         self.config = config
+        self.oil_limit = 0
         self.stats = Stats(config)
         if self.config.updates['enabled']:
             self.modules['updates'] = UpdateUtil(self.config)
         if self.config.combat['enabled']:
             self.modules['combat'] = CombatModule(self.config, self.stats)
+            self.oil_limit = self.config.combat['oil_limit']
         if self.config.commissions['enabled']:
             self.modules['commissions'] = CommissionModule(self.config, self.stats)
         if self.config.enhancement['enabled']:
@@ -63,7 +65,7 @@ class ALAuto(object):
         return self.modules['combat'] \
             and script.next_combat != 0 \
             and script.next_combat < datetime.now() \
-            and Utils.check_oil(self.config.combat['oil_limit'])
+            and Utils.check_oil(self.oil_limit)
 
     def run_sortie_cycle(self):
         """Method to run all cycles related to combat.
@@ -134,7 +136,7 @@ class ALAuto(object):
         """Method to print the cycle stats"
         """
         if self.print_stats_check:
-            self.stats.print_stats(Utils.check_oil(self.config.combat['oil_limit']))
+            self.stats.print_stats(Utils.check_oil(self.oil_limit))
         self.print_stats_check = False
 
 # check run-time args
