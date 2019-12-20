@@ -165,7 +165,7 @@ class Utils(object):
     def menu_navigate(cls, image):
         cls.update_screen()
 
-        while not cls.find(image):
+        while not cls.find(image, 0.85):
             if image == "menu/button_battle":
                 cls.touch_randomly(Region(54, 57, 67, 67))
                 cls.wait_update_screen(1)
@@ -173,7 +173,7 @@ class Utils(object):
         return
 
     @staticmethod
-    def find(image, similarity=DEFAULT_SIMILARITY):
+    def find(image, similarity=DEFAULT_SIMILARITY, cmap=None):
         """Finds the specified image on the screen
 
         Args:
@@ -185,6 +185,8 @@ class Utils(object):
             Region: region object containing the location and size of the image
         """
         template = cv2.imread('assets/{}.png'.format(image), 0)
+        if cmap != None and cmap == '7-1':
+            template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
         width, height = template.shape[::-1]
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
@@ -193,7 +195,7 @@ class Utils(object):
         return None
 
     @classmethod
-    def find_all(cls, image, similarity=DEFAULT_SIMILARITY):
+    def find_all(cls, image, similarity=DEFAULT_SIMILARITY, cmap=None):
         """Finds all locations of the image on the screen
 
         Args:
@@ -206,6 +208,8 @@ class Utils(object):
         """
         del cls.locations
         template = cv2.imread('assets/{}.png'.format(image), 0)
+        if cmap != None and cmap == '7-1':
+            template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         cls.locations = numpy.where(match >= similarity)
 
@@ -223,7 +227,7 @@ class Utils(object):
 
     @classmethod
     def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
-        template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = None)
+        template_resize = cv2.resize(image, (), fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
         numpy.append(cls.locations, numpy.where(match_resize >= similarity))
 

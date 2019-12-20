@@ -63,6 +63,7 @@ class CommissionModule(object):
             if Utils.find("commission/button_go") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_go").y):
                 Logger.log_msg("All commissions are running.")
                 Utils.touch_randomly(self.region["dismiss_side_tab"])
+                Utils.wait_update_screen(3)
                 break
 
         Utils.wait_update_screen(1)

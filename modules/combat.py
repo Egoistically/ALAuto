@@ -220,9 +220,6 @@ class CombatModule(object):
                 Utils.script_sleep(3)
                 Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
-            if Utils.find("combat/commander"):
-                Utils.touch_randomly(self.region["combat_end_confirm"])
-                continue
 
     def movement_handler(self, target_info):
         """
@@ -292,6 +289,7 @@ class CombatModule(object):
             coords (list): coordinate_x, coordinate_y. These coordinates describe the boss location.
         """
         Logger.log_debug("Unable to reach boss function started.")
+        self.blacklist.clear()
         closest_to_boss = self.get_closest_target(self.blacklist, coords)
 
         Utils.touch(closest_to_boss)
@@ -312,12 +310,14 @@ class CombatModule(object):
                     break
 
             self.movement_handler(closest_enemy)
-            self.battle_handler()
-            return
+            if not self.battle_handler():
+                return False
+            return True
         else:
             self.movement_handler(closest_to_boss)
-            self.battle_handler()
-            return
+            if not self.battle_handler():
+                return False
+            return True
 
     def retreat_handler(self):
         Logger.log_msg("Retreating...")
@@ -343,6 +343,8 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['dismiss_commission_dialog'])
                 continue
             if Utils.find("menu/attack"):
+                if self.exit != 2 and self.exit != 3:
+                    self.exit == 4
                 return
 
     def clear_map(self):
@@ -363,11 +365,11 @@ class CombatModule(object):
                 Logger.log_warning("Failed to defeat enemy.")
                 Utils.touch_randomly(self.region['close_info_dialog'])
                 return False
-            if self.exit is not 0:
+            if self.exit != 0:
                 return True
-            if Utils.find("enemy/fleet_boss", 0.9):
+            if Utils.find("enemy/fleet_boss", 0.9, self.chapter_map):
                 Logger.log_msg("Boss fleet was found.")
-                boss_region = Utils.find("enemy/fleet_boss", 0.9)
+                boss_region = Utils.find("enemy/fleet_boss", 0.9, self.chapter_map)
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
                 self.clear_boss(boss_info)
@@ -375,10 +377,6 @@ class CombatModule(object):
             if target_info == None:
                 if Utils.find("combat/question_mark", 0.9):
                     target_info = self.get_closest_target(self.blacklist, mystery_node=True)
-                    #if it is a mystery_node (question_mark), tap a bit lower
-                    if target_info[2] == "mystery_node":
-                        #coord_y += 140
-                        target_info[1] += 140
                 else:
                     target_info = self.get_closest_target(self.blacklist)
                 continue
@@ -414,12 +412,14 @@ class CombatModule(object):
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_msg("Unable to reach boss.")
                 #handle boss' coordinates
-                self.unable_handler(boss_info[0:2])
+                if not self.unable_handler(boss_info[0:2]):
+                    return
                 continue
             else:
                 self.movement_handler(boss_info)
                 if self.battle_handler(boss=True):
                     self.exit = 1
+                Utils.script_sleep(3)
                 return
 
     def get_enemies(self, blacklist=[]):
@@ -431,15 +431,15 @@ class CombatModule(object):
         while self.l == []:
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45],Utils.find_all('enemy/fleet_level', sim - 0.15)))
+            l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15, self.chapter_map)))
             l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_1_down', sim)))
+            l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim, self.chapter_map)))
             l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
+            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02, self.chapter_map)))
             l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130],Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
+            l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06, self.chapter_map)))
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110],Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
+            l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5
@@ -521,7 +521,7 @@ class CombatModule(object):
                 while mystery_nodes == []:
                     Utils.update_screen()
 
-                    l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, Utils.find_all('combat/question_mark', sim))
+                    l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
                     l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                     mystery_nodes = l1
