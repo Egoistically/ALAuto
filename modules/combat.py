@@ -96,7 +96,7 @@ class CombatModule(object):
                 Logger.log_debug("Disabling hard mode.")
                 Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
-            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
+            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.97):
                 Logger.log_msg("Found specified map.")
                 continue
             else:
@@ -120,7 +120,8 @@ class CombatModule(object):
             letter = self.chapter_map[2:3]
             event_maps = ['A', 'B', 'C', 'D']
 
-            Utils.find_and_touch("menu/button_event")
+            if not Utils.find_and_touch("menu/button_event"):
+                Utils.find_and_touch("menu/button_operation")
             Utils.wait_update_screen(1)
 
             if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode") or \
@@ -145,11 +146,11 @@ class CombatModule(object):
                         Logger.log_debug("Swiping to the left")
                         Utils.wait_update_screen()
 
-        if Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
+        if Utils.find('maps/map_{}'.format(self.chapter_map), 0.97):
             Logger.log_msg("Successfully reached the world where map is located.")
         else:
             Logger.log_error("Cannot find the specified map, please move to the world where it's located.")
-            while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
+            while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.97):
                 Utils.wait_update_screen(1)
 
     def battle_handler(self, boss=False):

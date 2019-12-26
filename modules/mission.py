@@ -53,4 +53,5 @@ class MissionModule(object):
                 else:
                     Logger.log_msg("No more missions to claim/collect.")
                     Utils.touch_randomly(self.region["button_back"])
+                    Utils.wait_update_screen(1)
                     return True
