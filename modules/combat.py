@@ -96,7 +96,7 @@ class CombatModule(object):
                 Logger.log_debug("Disabling hard mode.")
                 Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
-            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.97):
+            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
                 Logger.log_msg("Found specified map.")
                 continue
             else:
@@ -124,8 +124,8 @@ class CombatModule(object):
                 Utils.find_and_touch("menu/button_operation")
             Utils.wait_update_screen(1)
 
-            if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode") or \
-               event_maps.index(letter) > 1 and not Utils.find("menu/button_normal_mode"):
+            if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode", 0.8) or \
+               event_maps.index(letter) > 1 and not Utils.find("menu/button_normal_mode", 0.8):
                 Utils.touch_randomly(Region(88, 990, 80, 40))
                 Utils.wait_update_screen(1)
         else:
@@ -146,11 +146,11 @@ class CombatModule(object):
                         Logger.log_debug("Swiping to the left")
                         Utils.wait_update_screen()
 
-        if Utils.find('maps/map_{}'.format(self.chapter_map), 0.97):
+        if Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
             Logger.log_msg("Successfully reached the world where map is located.")
         else:
             Logger.log_error("Cannot find the specified map, please move to the world where it's located.")
-            while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.97):
+            while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
                 Utils.wait_update_screen(1)
 
     def battle_handler(self, boss=False):
@@ -219,7 +219,7 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/button_retreat"):
                 Utils.script_sleep(3)
-                Utils.touch_randomly(self.region["hide_strat_menu"])
+                #Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
 
     def movement_handler(self, target_info):
@@ -258,7 +258,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['tap_to_continue'])
                 if Utils.find("combat/menu_emergency"):
                     Utils.script_sleep(1)
-                    Utils.touch_randomly(self.region["hide_strat_menu"])
+                    #Utils.touch_randomly(self.region["hide_strat_menu"])
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
                     return 0
@@ -353,9 +353,14 @@ class CombatModule(object):
         Utils.script_sleep(2.5)
 
         #hide strat menu
-        Utils.touch_randomly(self.region["hide_strat_menu"])
-        #swipe map to the left
-        Utils.swipe(960, 540, 1300, 540, 100)
+        #Utils.touch_randomly(self.region["hide_strat_menu"])
+        #swipe map to fit everything on screen
+        def swipe(cmap):
+            if cmap == 'E-C3' or cmap == 'E-A3':
+                Utils.swipe(960, 800, 960, 400, 100)
+            else:
+                Utils.swipe(960, 540, 1300, 540, 100)
+        swipe(self.chapter_map)
 
         target_info = self.get_closest_target(self.blacklist)
 
