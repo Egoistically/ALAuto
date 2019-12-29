@@ -1,4 +1,5 @@
 import sys
+import traceback
 import argparse
 from modules.combat import CombatModule
 from modules.commission import CommissionModule
@@ -182,23 +183,41 @@ else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()
 
-while True:
-    Utils.update_screen()
+try:
+    while True:
+        Utils.update_screen()
 
-    # temporal solution to event alerts
-    if not Utils.find("menu/button_battle"):
-        Utils.touch_randomly(Region(54, 57, 67, 67))
-        Utils.script_sleep(1)
-        continue
-    if Utils.find("commission/alert_completed"):
-        script.run_commission_cycle()
-        script.print_cycle_stats()
-    if Utils.find("mission/alert_completed"):
-        script.run_mission_cycle()
-    if script.should_sortie():
-        script.run_sortie_cycle()
-        script.print_cycle_stats()
-    else:
-        Logger.log_msg("Nothing to do, will check again in a few minutes.")
-        Utils.script_sleep(300)
-        continue
+        # temporal solution to event alerts
+        if not Utils.find("menu/button_battle"):
+            Utils.touch_randomly(Region(54, 57, 67, 67))
+            Utils.script_sleep(1)
+            continue
+        if Utils.find("commission/alert_completed"):
+            script.run_commission_cycle()
+            script.print_cycle_stats()
+        if Utils.find("mission/alert_completed"):
+            script.run_mission_cycle()
+        if script.should_sortie():
+            script.run_sortie_cycle()
+            script.print_cycle_stats()
+        else:
+            Logger.log_msg("Nothing to do, will check again in a few minutes.")
+            Utils.script_sleep(300)
+            continue
+except KeyboardInterrupt:
+    # handling ^C from user
+    Logger.log_msg("Received keyboard interrupt from user. Closing...")
+    # writing traceback to file
+    f = open("traceback.log", "w")
+    traceback.print_exc(None, f, True)
+    f.close()
+    script.stats.print_stats(0)
+    sys.exit(0)
+except:
+    # registering whatever exception occurs during execution
+    Logger.log_error("An error occurred. For more info check the traceback.log file.")
+    # writing traceback to file
+    f = open("traceback.log", "w")
+    traceback.print_exc(None, f, True)
+    f.close()
+    sys.exit(1)
