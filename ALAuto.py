@@ -6,6 +6,7 @@ from modules.commission import CommissionModule
 from modules.enhancement import EnhancementModule
 from modules.mission import MissionModule
 from modules.retirement import RetirementModule
+from modules.headquarters import HeadquartersModule
 from modules.event import EventModule
 from datetime import datetime, timedelta
 from util.adb import Adb
@@ -23,6 +24,7 @@ class ALAuto(object):
         'enhancement': None,
         'missions': None,
         'retirement': None,
+        'headquarters': None,
         'event': None
     }
 
@@ -50,6 +52,8 @@ class ALAuto(object):
             self.modules['missions'] = MissionModule(self.config, self.stats)
         if self.config.retirement['enabled']:
             self.modules['retirement'] = RetirementModule(self.config, self.stats)
+        if self.config.dorm['enabled'] or self.config.academy['enabled']:
+            self.modules['headquarters'] = HeadquartersModule(self.config, self.stats)
         if self.config.events['enabled']:
             self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
@@ -127,6 +131,12 @@ class ALAuto(object):
         if self.modules['retirement']:
             self.modules['retirement'].retirement_logic_wrapper()
 
+    def run_hq_cycle(self):
+        """Method to run the headquarters cycle.
+        """
+        if self.modules['headquarters']:
+            self.modules['headquarters'].hq_logic_wrapper()
+
     def run_event_cycle(self):
         """Method to run the event cycle
         """
@@ -197,6 +207,8 @@ try:
             script.print_cycle_stats()
         if Utils.find("mission/alert_completed"):
             script.run_mission_cycle()
+        if Utils.find("headquarters/hq_alert"):
+            script.run_hq_cycle()
         if script.should_sortie():
             script.run_sortie_cycle()
             script.print_cycle_stats()

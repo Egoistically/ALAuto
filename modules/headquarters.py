@@ -1,0 +1,250 @@
+from util.utils import Region, Utils
+from util.logger import Logger
+from util.stats import Stats
+from util.config import Config
+
+
+class HeadquartersModule(object):
+
+    def __init__(self, config, stats):
+        """Initializes the HQ module.
+
+        Args:
+            config (Config): ALAuto Config instance
+            stats (Stats): ALAuto stats instance
+        """
+        self.enabled = True
+        self.config = config
+        self.stats = stats
+        self.region = {
+            'hq_tab': Region(745, 1000, 205, 65),
+            'tap_out': Region(760, 865, 380, 105),
+            'dorm_tab': Region(845, 390, 260, 295),
+            'academy_tab': Region(255, 390, 260, 295),
+            'dorm_back_button': Region(21, 47, 65, 65),
+            'dorm_eye_button': Region(27, 223, 50, 47),
+            'supplies_bar': Region(310, 975, 215, 65),
+            'oxy_cola': Region(470, 580, 105, 90),
+            'exit_snacks_menu': Region(900, 880, 380, 135),
+            'button_back': Region(48, 43, 76, 76),
+            'confirm_dorm_summary': Region(1545, 905, 235, 65),
+            'ignore_give_food_button': Region(690, 750, 185, 60),
+            'tactical_class_building': Region(1050, 195, 115, 64),
+            'skill_confirm_button': Region(1092, 757, 185, 45),
+            't3_offense_skillbook': Region(370, 440, 125, 125),
+            't3_defense_skillbook': Region(580, 440, 125, 125),
+            't3_support_skillbook': Region(790, 440, 125, 125),
+            't2_offense_skillbook': Region(1000, 440, 125, 125),
+            't2_defense_skillbook': Region(1210, 440, 125, 125),
+            't2_support_skillbook': Region(1420, 440, 125, 125),
+            't1_offense_skillbook': Region(370, 620, 125, 125),
+            't1_defense_skillbook': Region(580, 620, 125, 125),
+            't1_support_skillbook': Region(790, 620, 125, 125),
+            'start_lesson_button': Region(1660, 900, 150, 60)
+        }
+
+    def hq_logic_wrapper(self):
+        """Method that fires off the necessary child methods that encapsulates
+        all the actions related to the headquarters tab.
+        These actions are:
+        - Collecting dorm tokens/affinity points
+        - Refilling dorm
+        - Skill levelling
+        """
+        Logger.log_msg("Found HQ  alert.")
+        Utils.touch_randomly(self.region["hq_tab"])
+
+        # counter variables are used to prevent longer loops, i.e. when their corresponding alerts get stuck
+        counterHQ = 0
+        counterAcademy = 0
+        counterDorm = 0
+        # used when breaking from loop
+        tapToExit = 0
+
+        while True:
+            Utils.wait_update_screen(1)
+
+            if self.config.academy['enabled'] and Utils.find("headquarters/academy_alert", 0.99):
+                if counterAcademy < 2:
+                    Logger.log_msg("Found academy alert.")
+                    # open academy
+                    Utils.touch_randomly(self.region["academy_tab"])
+                    Utils.script_sleep(2)
+                    # open tactical class
+                    Logger.log_debug("Opening tactical class.")
+                    Utils.touch_randomly(self.region["tactical_class_building"])
+                    self.skill_levelling()
+                    # exit academy
+                    Utils.touch_randomly(self.region["button_back"])
+                    counterAcademy += 1
+                    Logger.log_debug("Going back to main menu.")
+                    continue
+                else:
+                    # do not restart loop, academy alert is stuck
+                    tapToExit = 1
+            if self.config.dorm['enabled'] and Utils.find("headquarters/dorm_alert", 0.99):
+                if counterDorm < 3:
+                    Logger.log_msg("Found dorm alert.")
+                    # open the dorm
+                    Utils.touch_randomly(self.region["dorm_tab"])
+                    Logger.log_debug("Opening tactical class.")
+                    self.refill_dorm()
+                    self.collect_dorm_balloons()
+                    Utils.script_sleep(1)
+                    Logger.log_msg("Cleaned dorm.")
+                    # exit dorm
+                    Utils.touch_randomly(self.region["dorm_back_button"])
+                    counterDorm += 1
+                    Logger.log_debug("Going back to main menu.")
+                    continue
+                else:
+                    # do not restart loop, dorm alert is stuck
+                    tapToExit = 1
+            if Utils.find("headquarters/cat_lodge_alert", 0.99):
+                # if only the cat lodge alert is detected as valid alert, tapToExit=1 and ignore it
+                tapToExit = 1
+                Logger.log_msg("Cat lodge alert detected, ignoring it.")                
+            if counterHQ < 5 and Utils.find("headquarters/hq_alert"):
+                # counterHQ = 5 only if academy has been opened two times and dorm three times
+                # the find fails if it's on the main menu and there is no alert or if it is on the selection screen
+                Logger.log_msg("Found HQ  alert.")
+                Utils.touch_randomly(self.region["hq_tab"])
+                counterHQ += 1
+                continue
+            else:
+                # exit loop
+                if tapToExit == 1:
+                    # academy alert is stuck or dorm alert is stuck or cat lodge alert is on
+                    Utils.touch_randomly(self.region["tap_out"])
+                Logger.log_debug("Ending HQ loop.")
+                break
+
+        Utils.wait_update_screen(1)
+        return True
+
+
+    def collect_dorm_balloons(self):
+        """"
+        This method finds and collects all the dorm tokens and affinity points visible to the script.
+        The various swipes may not work if there is a shipgirl at the starting point of the swipe.
+        For this reason the wrapper to this methoed iterates its cycle for three times, refreshing the dorm.
+        """
+        Utils.script_sleep(1)
+        # tap dorm eye in order to hide UI
+        Utils.touch_randomly(self.region["dorm_eye_button"])
+        Logger.log_debug("Collecting all visible dorm tokens/affinity points.")
+
+        for i in range(0, 4):
+            Utils.wait_update_screen(1)
+            # since a rather low similarity is used, the variable j ensures a finite loop
+            j = 0
+            while Utils.find_and_touch("headquarters/dorm_token", 0.75) and j < 5:
+                Logger.log_msg("Collected dorm token.")
+                Utils.wait_update_screen()
+                j += 1
+            j = 0
+            while Utils.find_and_touch("headquarters/affinity_point", 0.75) and j < 5:
+                Logger.log_msg("Collected affinity points.")
+                Utils.wait_update_screen()
+                j += 1
+            if i == 0:
+                # swipe right and refresh
+                Utils.swipe(960, 540, 560, 540, 300)
+                continue
+            if i == 1:
+                # swipe left (also countering the previous swipe) and refresh
+                Utils.swipe(960, 540, 1760, 540, 300)
+                continue
+            if i == 2:
+                # undo previous swipe
+                Utils.swipe(960, 540, 560, 540, 300)
+                # swipe up and refresh
+                Utils.swipe(960, 540, 960, 790, 300)
+                continue
+            if i == 3:
+                # swipe bottom (also countering the previous swipe) and refresh
+                Utils.swipe(960, 540, 960, 40, 300)
+                continue
+        
+        # restore UI
+        Utils.touch_randomly(self.region["dorm_eye_button"])
+
+    def refill_dorm(self):
+        """
+        This method refill the dorm supplies with 10 oxy cola (150 minutes) if the supplies bar is empty.
+        """
+
+        Utils.script_sleep(5)
+        Logger.log_debug("Refilling dorm supplies if empty.")
+
+        while True:
+            Utils.wait_update_screen(1)
+            if Utils.find("headquarters/dorm_summary_confirm_button"):
+                # dismiss dorm summary, if any
+                Utils.touch_randomly(self.region["confirm_dorm_summary"])
+                continue
+            if Utils.find("headquarters/give_food_button"):
+                # dismiss notification by tapping ignore
+                Utils.touch_randomly(self.region["ignore_give_food_button"])
+                continue
+            if Utils.find("headquarters/supplies_bar_empty"):
+                # proceed to refill
+                Utils.touch_randomly(self.region["supplies_bar"])
+                Utils.script_sleep(1)
+                # tap oxy cola ten times
+                for i in range(0, 10):
+                    Utils.touch_randomly(self.region["oxy_cola"])
+                Logger.log_msg("Refilled dorm supplies.")
+                # tap out
+                Utils.touch_randomly(self.region["exit_snacks_menu"])
+            else:
+                # exit loop
+                Logger.log_debug("Ending refill loop.")
+                break
+
+    def skill_levelling(self):
+        """
+        This method ensures that the skills currently being levelled continue to do so.
+        The skillbooks used are the ones indicated by the SkillBookTier setting in the config.ini file.
+        """
+        Utils.script_sleep(5)
+        Logger.log_msg("Levelling the skills of the previously chosen ships.")
+
+        while True:
+            Utils.wait_update_screen(1)
+            
+            if Utils.find("headquarters/info_message"):
+                Utils.touch_randomly(self.region["skill_confirm_button"])
+                Logger.log_msg("Starting/ending skill levelling session.")
+                Utils.script_sleep(3.5)
+                continue
+            if Utils.find("headquarters/offense_boost", 0.99):
+                # levelling offesinve skill
+                Utils.touch_randomly(self.region["t{}_offense_skillbook".format(self.config.academy["skill_book_tier"])])
+                Logger.log_msg("Selected T{} offensive skill book.".format(self.config.academy["skill_book_tier"]))
+                self.stats.increment_offensive_skillbook_used()
+                Utils.script_sleep(1)
+                Utils.touch_randomly(self.region["start_lesson_button"])
+                continue
+            if Utils.find("headquarters/defense_boost", 0.99):
+                # levelling defensive skill
+                Utils.touch_randomly(self.region["t{}_defense_skillbook".format(self.config.academy["skill_book_tier"])])
+                Logger.log_msg("Selected T{} defensive skill book.".format(self.config.academy["skill_book_tier"]))
+                self.stats.increment_defensive_skillbook_used()
+                Utils.script_sleep(1)
+                Utils.touch_randomly(self.region["start_lesson_button"])
+                continue
+            if Utils.find("headquarters/support_boost", 0.99):
+                # levelling support skill
+                Utils.touch_randomly(self.region["t{}_support_skillbook".format(self.config.academy["skill_book_tier"])])
+                Logger.log_msg("Selected T{} support skill book.".format(self.config.academy["skill_book_tier"]))
+                self.stats.increment_support_skillbook_used()
+                Utils.script_sleep(1)
+                Utils.touch_randomly(self.region["start_lesson_button"])
+                continue
+            if Utils.find("headquarters/tactical_class"):
+                # exit tactical class
+                Utils.touch_randomly(self.region["button_back"])
+                Logger.log_msg("All classes have started.")
+                Utils.script_sleep(1)
+                break
