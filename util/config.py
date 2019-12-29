@@ -28,6 +28,8 @@ class Config(object):
         self.enhancement = {'enabled': False}
         self.missions = {'enabled': False}
         self.retirement = {'enabled': False}
+        self.dorm = {'enabled': False}
+        self.academy = {'enabled': False}
         self.events = {'enabled': False}
         self.network = {}
         self.read()
@@ -43,6 +45,9 @@ class Config(object):
 
         if config.getboolean('Combat', 'Enabled'):
             self._read_combat(config)
+
+        if config.getboolean('Headquarters', 'Dorm') or config.getboolean('Headquarters', 'Academy'):
+            self._read_headquarters(config)
 
         self.commissions['enabled'] = config.getboolean('Modules', 'Commissions')
         self.enhancement['enabled'] = config.getboolean('Modules', 'Enhancement')
@@ -85,6 +90,16 @@ class Config(object):
         self.combat['map'] = config.get('Combat', 'Map')
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
+
+    def _read_headquarters(self, config):
+        """Method to parse the Headquarters settings passed in config.
+        Args:
+            config (ConfigParser): ConfigParser instance
+        """
+        self.dorm['enabled'] = config.getboolean('Headquarters', 'Dorm')
+        self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
+        if self.academy['enabled']:
+            self.academy['skill_book_tier'] = int(config.get('Headquarters', 'SkillBookTier'))
 
     def _read_event(self, config):
         """Method to parse the Event settings of the passed in config.

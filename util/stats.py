@@ -22,6 +22,9 @@ class Stats(object):
         self.commissions_received = 0
         self.combat_attempted = 0
         self.combat_done = 0
+        self.offensive_skillbook = 0
+        self.defensive_skillbook = 0
+        self.support_skillbook = 0
 
     def _pretty_timedelta(self, delta):
         """Generate a human-readable time delta representation of how long the
@@ -73,6 +76,12 @@ class Stats(object):
                     self._pretty_perhour(self.commissions_started, hours),
                     self._pretty_perhour(self.commissions_received, hours)))
 
+        if self.config.academy['enabled']:
+            Logger.log_success(
+                "Skillbooks T{} used (offensive/defensive/support): {} / {} / {}".format(
+                    self.config.academy['skill_book_tier'], self.offensive_skillbook,
+                    self.defensive_skillbook, self.support_skillbook))
+
         if self.config.combat['enabled']:
             Logger.log_success("Combat done: {} / attempted: {}".format(
                 self._pretty_perhour(self.combat_done, hours),
@@ -102,3 +111,18 @@ class Stats(object):
         """Increments the number of sorties completed
         """
         self.combat_done += 1
+
+    def increment_offensive_skillbook_used(self):
+        """Increments the number of offensive skill book used
+        """
+        self.offensive_skillbook += 1
+
+    def increment_defensive_skillbook_used(self):
+        """Increments the number of defensive skill book used
+        """
+        self.defensive_skillbook += 1
+    
+    def increment_support_skillbook_used(self):
+        """Increments the number of support skill book used
+        """
+        self.support_skillbook += 1

@@ -1,10 +1,12 @@
 import sys
+import traceback
 import argparse
 from modules.combat import CombatModule
 from modules.commission import CommissionModule
 from modules.enhancement import EnhancementModule
 from modules.mission import MissionModule
 from modules.retirement import RetirementModule
+from modules.headquarters import HeadquartersModule
 from modules.event import EventModule
 from datetime import datetime, timedelta
 from util.adb import Adb
@@ -22,6 +24,7 @@ class ALAuto(object):
         'enhancement': None,
         'missions': None,
         'retirement': None,
+        'headquarters': None,
         'event': None
     }
 
@@ -49,6 +52,8 @@ class ALAuto(object):
             self.modules['missions'] = MissionModule(self.config, self.stats)
         if self.config.retirement['enabled']:
             self.modules['retirement'] = RetirementModule(self.config, self.stats)
+        if self.config.dorm['enabled'] or self.config.academy['enabled']:
+            self.modules['headquarters'] = HeadquartersModule(self.config, self.stats)
         if self.config.events['enabled']:
             self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
@@ -126,6 +131,12 @@ class ALAuto(object):
         if self.modules['retirement']:
             self.modules['retirement'].retirement_logic_wrapper()
 
+    def run_hq_cycle(self):
+        """Method to run the headquarters cycle.
+        """
+        if self.modules['headquarters']:
+            self.modules['headquarters'].hq_logic_wrapper()
+
     def run_event_cycle(self):
         """Method to run the event cycle
         """
@@ -182,23 +193,43 @@ else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()
 
-while True:
-    Utils.update_screen()
+try:
+    while True:
+        Utils.update_screen()
 
-    # temporal solution to event alerts
-    if not Utils.find("menu/button_battle"):
-        Utils.touch_randomly(Region(54, 57, 67, 67))
-        Utils.script_sleep(1)
-        continue
-    if Utils.find("commission/alert_completed"):
-        script.run_commission_cycle()
-        script.print_cycle_stats()
-    if Utils.find("mission/alert_completed"):
-        script.run_mission_cycle()
-    if script.should_sortie():
-        script.run_sortie_cycle()
-        script.print_cycle_stats()
-    else:
-        Logger.log_msg("Nothing to do, will check again in a few minutes.")
-        Utils.script_sleep(300)
-        continue
+        # temporal solution to event alerts
+        if not Utils.find("menu/button_battle"):
+            Utils.touch_randomly(Region(54, 57, 67, 67))
+            Utils.script_sleep(1)
+            continue
+        if Utils.find("commission/alert_completed"):
+            script.run_commission_cycle()
+            script.print_cycle_stats()
+        if Utils.find("mission/alert_completed"):
+            script.run_mission_cycle()
+        if Utils.find("headquarters/hq_alert"):
+            script.run_hq_cycle()
+        if script.should_sortie():
+            script.run_sortie_cycle()
+            script.print_cycle_stats()
+        else:
+            Logger.log_msg("Nothing to do, will check again in a few minutes.")
+            Utils.script_sleep(300)
+            continue
+except KeyboardInterrupt:
+    # handling ^C from user
+    Logger.log_msg("Received keyboard interrupt from user. Closing...")
+    # writing traceback to file
+    f = open("traceback.log", "w")
+    traceback.print_exc(None, f, True)
+    f.close()
+    script.stats.print_stats(0)
+    sys.exit(0)
+except:
+    # registering whatever exception occurs during execution
+    Logger.log_error("An error occurred. For more info check the traceback.log file.")
+    # writing traceback to file
+    f = open("traceback.log", "w")
+    traceback.print_exc(None, f, True)
+    f.close()
+    sys.exit(1)

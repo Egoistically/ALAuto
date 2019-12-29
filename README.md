@@ -1,6 +1,6 @@
 # ALAuto
 Updated and semi-rewritten version of [azurlane-auto](https://github.com/perryhuynh/azurlane-auto).  
-Automates Combat, Commissions, Missions, Enhancement and Retiring.
+Automates Combat, Commissions, Missions, Enhancement, Retiring, Skill Levelling, Dorm Refilling and Dorm Cleaning.
 
 **This bot was made for EN server, other servers won't work with current assets.**
 
@@ -22,8 +22,9 @@ Check the [Wiki](https://github.com/Egoistically/ALAuto/wiki/Config.ini-and-Modu
 
 ## Relevant information
 * It does not support multiple fleets, it only works when **one** fleet is selected.
-* CPU usage might spike when searching for enemies, if it bothers you comment lines 191 to 199 in utils.py.
+* CPU usage might spike when searching for enemies, if it bothers you comment lines 216 to 224 in utils.py.
 * If you'd like to disable oil limit set it to `0`.
+* If you wish to view a changelog, check the [commit history](https://github.com/Egoistically/ALAuto/commits/master).
 
 This was made for my own usage, it is far from good and I'm very aware of it. I am posting this because it might be useful to someone, that's all.  
 If you'd like to contribute in any way make sure to open a [pull request](https://github.com/Egoistically/ALAuto/pulls) or an [issue](https://github.com/Egoistically/ALAuto/issues). You can also contact me on Discord ego#9459.
