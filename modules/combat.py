@@ -29,6 +29,7 @@ class CombatModule(object):
             'combat_ambush_evade': Region(1493, 682, 208, 56),
             'combat_com_confirm': Region(848, 740, 224, 56),
             'combat_end_confirm': Region(1520, 963, 216, 58),
+            'combat_dismiss_surface_fleet_summary': Region(790, 950, 250, 65),
             'menu_combat_start': Region(1578, 921, 270, 70),
             'tap_to_continue': Region(661, 840, 598, 203),
             'close_info_dialog': Region(1326, 274, 35, 35),
@@ -38,6 +39,7 @@ class CombatModule(object):
             'normal_mode_button': Region(88, 990, 80, 40),
             'map_nav_right': Region(1831, 547, 26, 26),
             'map_nav_left': Region(65, 547, 26, 26),
+            'event_button': Region(1770, 250, 75, 75),
             'lock_ship_button': Region(1086, 739, 200, 55),
             'menu_nav_back': Region(54, 57, 67, 67)
         }
@@ -120,8 +122,7 @@ class CombatModule(object):
             letter = self.chapter_map[2:3]
             event_maps = ['A', 'B', 'C', 'D']
 
-            if not Utils.find_and_touch("menu/button_event"):
-                Utils.find_and_touch("menu/button_operation")
+            Utils.touch_randomly(self.region['event_button'])
             Utils.wait_update_screen(1)
 
             if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode", 0.8) or \
@@ -221,6 +222,10 @@ class CombatModule(object):
                 Utils.script_sleep(3)
                 #Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
+            if Utils.find("combat/commander"):
+                # prevents fleet with submarines from getting stuck at combat end screen
+                Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
+                continue
 
     def movement_handler(self, target_info):
         """
