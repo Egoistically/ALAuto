@@ -185,8 +185,11 @@ class Utils(object):
             Region: region object containing the location and size of the image
         """
         template = cv2.imread('assets/{}.png'.format(image), 0)
-        if cmap != None and cmap == '7-1':
-            template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
+        if cmap != None:
+            if cmap == '7-1':
+                template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
+            if (cmap == 'E-B3' or cmap == 'E-D3') and image == 'enemy/fleet_boss':
+                template = cv2.resize(template, None, fx = 0.49, fy = 0.49, interpolation = cv2.INTER_NEAREST)
         width, height = template.shape[::-1]
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
