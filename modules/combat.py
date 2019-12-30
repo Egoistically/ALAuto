@@ -157,7 +157,7 @@ class CombatModule(object):
     def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
 
-        while not Utils.find("combat/menu_loading", 0.8):
+        while not (Utils.find("combat/menu_loading", 0.8) or Utils.find("combat/pause_button", 0.8)):
             Utils.update_screen()
 
             if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
@@ -272,7 +272,7 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-            if event["combat/menu_formation"] or event["combat/menu_loading"]:
+            if event["combat/menu_formation"] or event["combat/menu_loading"] or event["combat/pause_button"]:
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
@@ -572,11 +572,14 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
         thread_check_menu_loading = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_loading",))
+        thread_check_pause_button = Thread(
+            target=self.check_movement_threads_func, args=("combat/pause_button",))
 
         Utils.multithreader([
             thread_check_button_evade, thread_check_failed_evade,
             thread_check_alert_info, thread_check_item_found,
-            thread_check_menu_formation, thread_check_menu_loading])
+            thread_check_menu_formation, thread_check_menu_loading,
+            thread_check_pause_button])
 
         return self.movement_event
 
