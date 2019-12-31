@@ -20,8 +20,6 @@ class Config(object):
         self.config_file = config_file
         self.ok = False
         self.initialized = False
-        self.scheduled_sleep = {}
-        self.scheduled_stop = {}
         self.updates = {'enabled': False}
         self.combat = {'enabled': False}
         self.commissions = {'enabled': False}
@@ -90,6 +88,7 @@ class Config(object):
         self.combat['map'] = config.get('Combat', 'Map')
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
+        self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.

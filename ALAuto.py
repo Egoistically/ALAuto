@@ -104,6 +104,9 @@ class ALAuto(object):
                 else:
                     Logger.log_error("Retirement isn't enabled, exiting.")
                     sys.exit()
+            if result == 4:
+                Logger.log_warning("Failed to defeat enemy.")
+                self.print_stats_check = False
         else:
             self.next_combat = 0
 

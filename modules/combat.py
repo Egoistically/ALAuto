@@ -1,4 +1,5 @@
 import math
+import string
 from util.logger import Logger
 from util.utils import Region, Utils
 from scipy import spatial
@@ -16,13 +17,16 @@ class CombatModule(object):
         self.enabled = True
         self.config = config
         self.stats = stats
+        self.chapter_map = self.config.combat['map']
+
         self.exit = 0
+        self.combats_done = 0
         self.l = []
         self.blacklist = []
         self.movement_event = {}
-        self.chapter_map = self.config.combat['map']
+
         self.region = {
-            'hide_strat_menu': Region(1617, 593, 4, 146),
+            'fleet_lock': Region(1790, 750, 130, 30),
             'menu_button_battle': Region(1517, 442, 209, 206),
             'map_summary_go': Region(1289, 743, 280, 79),
             'fleet_menu_go': Region(1485, 872, 270, 74),
@@ -41,6 +45,7 @@ class CombatModule(object):
             'map_nav_left': Region(65, 547, 26, 26),
             'event_button': Region(1770, 250, 75, 75),
             'lock_ship_button': Region(1086, 739, 200, 55),
+            'clear_second_fleet': Region(1690, 473, 40, 40),
             'menu_nav_back': Region(54, 57, 67, 67)
         }
 
@@ -52,6 +57,7 @@ class CombatModule(object):
             int: 1 if boss was defeated, 2 if morale is too low and 3 if dock is full.
         """
         self.exit = 0
+        self.combats_done = 0
         self.l.clear()
         self.blacklist.clear()
 
@@ -74,6 +80,11 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["menu_button_battle"])
                 Utils.wait_update_screen(1)
                 continue
+            if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y) and \
+                not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1:
+                Logger.log_msg("Removing second fleet from fleet selection.")
+                Utils.touch_randomly(self.region["clear_second_fleet"])
+                continue
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
@@ -88,7 +99,7 @@ class CombatModule(object):
                 if not self.clear_map():
                     self.stats.increment_combat_attempted()
                     break
-            if self.exit == 1:
+            if self.exit == 1 or self.exit == 5:
                 self.stats.increment_combat_done()
                 break
             if self.exit > 1:
@@ -157,7 +168,7 @@ class CombatModule(object):
     def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
 
-        while not (Utils.find("combat/menu_loading", 0.8) or Utils.find("combat/pause_button", 0.8)):
+        while not (Utils.find("combat/menu_loading", 0.8)):
             Utils.update_screen()
 
             if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
@@ -214,12 +225,18 @@ class CombatModule(object):
                 if boss:
                     return True
                 Utils.update_screen()
+            if Utils.find("combat/alert_unable_battle"):
+                Utils.touch_randomly(self.region['close_info_dialog'])
+                Utils.script_sleep(3)
+                self.exit = 4
+                return
             if Utils.find("commission/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
             if Utils.find("combat/button_retreat"):
                 Utils.script_sleep(3)
+                self.combats_done += 1
                 #Utils.touch_randomly(self.region["hide_strat_menu"])
                 return
             if Utils.find("combat/commander"):
@@ -272,7 +289,7 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-            if event["combat/menu_formation"] or event["combat/menu_loading"] or event["combat/pause_button"]:
+            if event["combat/menu_formation"] or event["combat/menu_loading"]:
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
@@ -326,8 +343,8 @@ class CombatModule(object):
             return True
 
     def retreat_handler(self):
-        Logger.log_msg("Retreating...")
-
+        """ Retreats if necessary.
+        """
         while True:
             Utils.update_screen()
 
@@ -349,16 +366,21 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['dismiss_commission_dialog'])
                 continue
             if Utils.find("menu/attack"):
-                if self.exit != 2 and self.exit != 3:
-                    self.exit == 4
+                if self.exit != 1 and self.exit != 4 and self.exit != 5:
+                    Logger.log_msg("Retreating...")
                 return
 
     def clear_map(self):
+        """ Clears map.
+        """
         Logger.log_msg("Started map clear.")
         Utils.script_sleep(2.5)
 
-        #hide strat menu
-        #Utils.touch_randomly(self.region["hide_strat_menu"])
+        while Utils.find("combat/fleet_lock", 0.99):
+            Utils.touch_randomly(self.region["fleet_lock"])
+            Logger.log_warning("Fleet lock is not supported, disabling it.")
+            Utils.wait_update_screen()
+
         #swipe map to fit everything on screen
         def swipe(cmap):
             if cmap == 'E-C3' or cmap == 'E-A3':
@@ -373,10 +395,13 @@ class CombatModule(object):
             Utils.update_screen()
 
             if Utils.find("combat/alert_unable_battle"):
-                Logger.log_warning("Failed to defeat enemy.")
                 Utils.touch_randomly(self.region['close_info_dialog'])
-                return False
+                self.exit = 4
+            if self.config.combat['retreat_after'] != 0 and self.combats_done >= self.config.combat['retreat_after']:
+                Logger.log_msg("Retreating after defeating {} enemies".format(self.config.combat['retreat_after']))
+                self.exit = 5
             if self.exit != 0:
+                self.retreat_handler()
                 return True
             if Utils.find("enemy/fleet_boss", 0.9, self.chapter_map):
                 Logger.log_msg("Boss fleet was found.")
@@ -572,14 +597,11 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
         thread_check_menu_loading = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_loading",))
-        thread_check_pause_button = Thread(
-            target=self.check_movement_threads_func, args=("combat/pause_button",))
 
         Utils.multithreader([
             thread_check_button_evade, thread_check_failed_evade,
             thread_check_alert_info, thread_check_item_found,
-            thread_check_menu_formation, thread_check_menu_loading,
-            thread_check_pause_button])
+            thread_check_menu_formation, thread_check_menu_loading])
 
         return self.movement_event
 
