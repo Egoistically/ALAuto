@@ -58,51 +58,40 @@ class HeadquartersModule(object):
         counterHQ = 0
         counterAcademy = 0
         counterDorm = 0
-        # used when breaking from loop
-        tapToExit = 0
 
         while True:
             Utils.wait_update_screen(1)
 
-            if self.config.academy['enabled'] and Utils.find("headquarters/academy_alert", 0.99):
-                if counterAcademy < 2:
-                    Logger.log_msg("Found academy alert.")
-                    # open academy
-                    Utils.touch_randomly(self.region["academy_tab"])
-                    Utils.script_sleep(2)
-                    # open tactical class
-                    Logger.log_debug("Opening tactical class.")
-                    Utils.touch_randomly(self.region["tactical_class_building"])
-                    self.skill_levelling()
-                    # exit academy
-                    Utils.touch_randomly(self.region["button_back"])
-                    counterAcademy += 1
-                    Logger.log_debug("Going back to main menu.")
-                    continue
-                else:
-                    # do not restart loop, academy alert is stuck
-                    tapToExit = 1
-            if self.config.dorm['enabled'] and Utils.find("headquarters/dorm_alert", 0.99):
-                if counterDorm < 3:
-                    Logger.log_msg("Found dorm alert.")
-                    # open the dorm
-                    Utils.touch_randomly(self.region["dorm_tab"])
-                    Logger.log_debug("Opening tactical class.")
-                    self.refill_dorm()
-                    self.collect_dorm_balloons()
-                    Utils.script_sleep(1)
-                    Logger.log_msg("Cleaned dorm.")
-                    # exit dorm
-                    Utils.touch_randomly(self.region["dorm_back_button"])
-                    counterDorm += 1
-                    Logger.log_debug("Going back to main menu.")
-                    continue
-                else:
-                    # do not restart loop, dorm alert is stuck
-                    tapToExit = 1
+            if self.config.academy['enabled'] and counterAcademy < 2 and Utils.find("headquarters/academy_alert", 0.99):
+                Logger.log_msg("Found academy alert.")
+                # open academy
+                Utils.touch_randomly(self.region["academy_tab"])
+                Utils.script_sleep(2)
+                # open tactical class
+                Logger.log_debug("Opening tactical class.")
+                Utils.touch_randomly(self.region["tactical_class_building"])
+                self.skill_levelling()
+                # exit academy
+                Utils.touch_randomly(self.region["button_back"])
+                counterAcademy += 1
+                Logger.log_debug("Going back to main menu.")
+                continue
+            if self.config.dorm['enabled'] and counterDorm < 3 and Utils.find("headquarters/dorm_alert", 0.99):
+                Logger.log_msg("Found dorm alert.")
+                # open the dorm
+                Utils.touch_randomly(self.region["dorm_tab"])
+                Logger.log_debug("Opening tactical class.")
+                self.refill_dorm()
+                self.collect_dorm_balloons()
+                Utils.script_sleep(1)
+                Logger.log_msg("Cleaned dorm.")
+                # exit dorm
+                Utils.touch_randomly(self.region["dorm_back_button"])
+                counterDorm += 1
+                Logger.log_debug("Going back to main menu.")
+                continue
             if Utils.find("headquarters/cat_lodge_alert", 0.99):
-                # if only the cat lodge alert is detected as valid alert, tapToExit=1 and ignore it
-                tapToExit = 1
+                # if only the cat lodge alert is detected as valid alert, ignore it
                 Logger.log_msg("Cat lodge alert detected, ignoring it.")                
             if counterHQ < 5 and Utils.find("headquarters/hq_alert"):
                 # counterHQ = 5 only if academy has been opened two times and dorm three times
@@ -113,8 +102,9 @@ class HeadquartersModule(object):
                 continue
             else:
                 # exit loop
-                if tapToExit == 1:
+                if Utils.find("headquarters/dorm_sign"):
                     # academy alert is stuck or dorm alert is stuck or cat lodge alert is on
+                    Logger.log_debug("Alert is on, but nothing else to do.")
                     Utils.touch_randomly(self.region["tap_out"])
                 Logger.log_debug("Ending HQ loop.")
                 break
