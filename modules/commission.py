@@ -48,7 +48,7 @@ class CommissionModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("commission/button_ready") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_ready").y):
+            if Utils.find("commission/button_completed") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_completed").y):
                 Logger.log_debug("Found commission complete button.")
                 self.completed_handler()
             if Utils.find("commission/alert_available", 0.9) and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available", 0.9).y):
