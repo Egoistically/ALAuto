@@ -266,10 +266,10 @@ class Utils(object):
 
         Args:
             x1 (int): x-coordinate to begin the swipe at.
-            y1 (int): x-coordinate to end the swipe at.
-            x2 (int): y-coordinate to begin the swipe at.
-            y2 (int): y-coordinate to begin the swipe at.
-            ms (int): Duration in ms of swipe.
+            y1 (int): y-coordinate to begin the swipe at.
+            x2 (int): x-coordinate to end the swipe at.
+            y2 (int): y-coordinate to end the swipe at.
+            ms (int): Duration in ms of swipe. This value shouldn't be lower than 300, better if it is higher.
         """
         Adb.shell("input swipe {} {} {} {} {}".format(x1, y1, x2, y2, ms))
         cls.update_screen()

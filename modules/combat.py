@@ -80,10 +80,11 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["menu_button_battle"])
                 Utils.wait_update_screen(1)
                 continue
-            if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y) and \
-                not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1:
-                Logger.log_msg("Removing second fleet from fleet selection.")
-                Utils.touch_randomly(self.region["clear_second_fleet"])
+            if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y):
+                if not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1 or \
+                    self.chapter_map[0].isdigit():
+                    Logger.log_msg("Removing second fleet from fleet selection.")
+                    Utils.touch_randomly(self.region["clear_second_fleet"])
                 continue
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
@@ -138,7 +139,7 @@ class CombatModule(object):
 
             if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode", 0.8) or \
                event_maps.index(letter) > 1 and not Utils.find("menu/button_normal_mode", 0.8):
-                Utils.touch_randomly(Region(88, 990, 80, 40))
+                Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
         else:
             for x in range(1, 13):

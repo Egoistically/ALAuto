@@ -48,7 +48,7 @@ class CommissionModule(object):
         while True:
             Utils.update_screen()
 
-            if Utils.find("commission/button_completed") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_completed").y):
+            if Utils.find("commission/button_ready") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_ready").y):
                 Logger.log_debug("Found commission complete button.")
                 self.completed_handler()
             if Utils.find("commission/alert_available", 0.9) and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available", 0.9).y):
@@ -133,7 +133,7 @@ class CommissionModule(object):
                 Logger.log_debug("Found commission oil warning message.")
                 Utils.touch_randomly(self.region["oil_warning"])
                 continue
-            if Utils.find("commission/button_complete"):
+            if Utils.find("commission/button_ready"):
                 Logger.log_debug("Found commission start button.")
                 Utils.touch_randomly(self.region["commission_start"])
                 continue
