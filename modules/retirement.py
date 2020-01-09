@@ -94,7 +94,7 @@ class RetirementModule(object):
                 Utils.touch_randomly(self.region['rare_ship_filter'])
                 Utils.script_sleep(0.5)
                 continue
-            if Utils.find("retirement/button_sort_common") and Utils.find("retirement/button_sort_rare"):
+            if Utils.find("retirement/button_sort_common", 0.99) and Utils.find("retirement/button_sort_rare", 0.99):
                 Logger.log_msg("Sorting options for retirement are correct.")
                 self.sorted = True
                 Utils.touch_randomly(self.region['confirm_filter_button'])
