@@ -192,6 +192,8 @@ if adb.init():
     if Adb.exec_out('wm size').decode('utf-8').strip()[15:] not in res:
         Logger.log_error("Resolution is not 1920x1080, please change it.")
         sys.exit()
+
+    Utils.assets = config.assets['server']
 else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()

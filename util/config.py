@@ -30,6 +30,7 @@ class Config(object):
         self.academy = {'enabled': False}
         self.events = {'enabled': False}
         self.network = {}
+        self.assets = {}
         self.read()
 
     def read(self):
@@ -37,6 +38,7 @@ class Config(object):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
+        self.assets['server'] = config.get('Assets', 'Server')
 
         if config.getboolean('Updates', 'Enabled'):
             self._read_updates(config)
@@ -130,6 +132,14 @@ class Config(object):
             Logger.log_msg("Validating config")
         self.ok = True
 
+        valid_servers = ['EN']
+        if self.assets['server'] not in valid_servers:
+            if len(valid_servers) < 2:
+                Logger.log_error("Invalid assets configured. Only {} is supported.".format(''.join(valid_servers)))
+            else:
+                Logger.log_error("Invalid assets configured. Only {} and {} are supported.".format(', '.join(valid_servers[:-1]), valid_servers[-1]))
+            self.ok = False
+
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
            and not self.missions['enabled'] and not self.retirement['enabled'] and not self.events['enabled']:
             Logger.log_error("All modules are disabled, consider checking your config.")
@@ -142,7 +152,7 @@ class Config(object):
 
         if self.combat['enabled']:
             map = self.combat['map'].split('-')
-            valid_chapters = list(range(1, 11)) + ['E']
+            valid_chapters = list(range(1, 13)) + ['E']
             valid_levels = list(range(1, 5)) + ['A1', 'A2', 'A3', 'A4',
                                                 'B1', 'B2', 'B3', 'B4',
                                                 'C1', 'C2', 'C3', 'C4',

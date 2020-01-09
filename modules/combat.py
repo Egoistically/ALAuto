@@ -141,7 +141,7 @@ class CombatModule(object):
                 Utils.touch_randomly(Region(88, 990, 80, 40))
                 Utils.wait_update_screen(1)
         else:
-            for x in range(1, 11):
+            for x in range(1, 13):
                 if Utils.find("maps/map_{}-1".format(x), 0.99):
                     _map = x
                     break

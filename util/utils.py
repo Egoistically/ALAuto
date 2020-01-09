@@ -32,6 +32,7 @@ last_ocr = ''
 class Utils(object):
 
     DEFAULT_SIMILARITY = 0.95
+    assets = ''
     locations = ()
 
     @staticmethod
@@ -172,8 +173,8 @@ class Utils(object):
 
         return
 
-    @staticmethod
-    def find(image, similarity=DEFAULT_SIMILARITY, cmap=None):
+    @classmethod
+    def find(cls, image, similarity=DEFAULT_SIMILARITY, cmap=None):
         """Finds the specified image on the screen
 
         Args:
@@ -184,7 +185,7 @@ class Utils(object):
         Returns:
             Region: region object containing the location and size of the image
         """
-        template = cv2.imread('assets/{}.png'.format(image), 0)
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
         if cmap != None:
             if cmap == '7-1':
                 template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
@@ -210,7 +211,7 @@ class Utils(object):
             array: Array of all coordinates where the image appears
         """
         del cls.locations
-        template = cv2.imread('assets/{}.png'.format(image), 0)
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
         if cmap != None and cmap == '7-1':
             template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)

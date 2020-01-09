@@ -22,7 +22,7 @@ Check the [Wiki](https://github.com/Egoistically/ALAuto/wiki/Config.ini-and-Modu
 
 ## Relevant information
 * It does not support multiple fleets, it only works when **one** fleet is selected.
-* CPU usage might spike when searching for enemies, if it bothers you comment lines 219 to 227 in utils.py.
+* CPU usage might spike when searching for enemies, if it bothers you comment lines 220 to 228 in utils.py.
 * If you'd like to disable `oil limit` or `retreat after` set them to `0`.
 * If you wish to view a changelog, check the [commit history](https://github.com/Egoistically/ALAuto/commits/master).
 * If you'd like to help us during events to release an update faster you can check [this guide](https://github.com/Egoistically/ALAuto/wiki/Creating-new-assets-for-bot).
