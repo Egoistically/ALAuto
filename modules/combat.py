@@ -175,6 +175,9 @@ class CombatModule(object):
             if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
                 self.retreat_handler()
                 return False
+            elif Utils.find("combat/combat_pause", 0.7):
+                Logger.log_warning("Loading screen was not found but combat pause is present, assuming combat is initiated normally.")
+                break
             else:
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 Utils.script_sleep(1)
