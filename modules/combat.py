@@ -481,8 +481,11 @@ class CombatModule(object):
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
             l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
+            l6 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06, self.chapter_map)))
+            l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
 
-            self.l = l1 + l2 + l3 + l4 + l5
+
+            self.l = l1 + l2 + l3 + l4 + l5 + l6
             sim -= 0.005
 
         self.l = Utils.filter_similar_coords(self.l)
