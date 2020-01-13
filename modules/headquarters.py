@@ -30,17 +30,8 @@ class HeadquartersModule(object):
             'confirm_dorm_summary': Region(1545, 905, 235, 65),
             'ignore_give_food_button': Region(690, 750, 185, 60),
             'tactical_class_building': Region(1050, 195, 115, 64),
-            'skill_confirm_button': Region(1092, 757, 185, 45),
-            't3_offense_skillbook': Region(370, 440, 125, 125),
-            't3_defense_skillbook': Region(580, 440, 125, 125),
-            't3_support_skillbook': Region(790, 440, 125, 125),
-            't2_offense_skillbook': Region(1000, 440, 125, 125),
-            't2_defense_skillbook': Region(1210, 440, 125, 125),
-            't2_support_skillbook': Region(1420, 440, 125, 125),
-            't1_offense_skillbook': Region(370, 620, 125, 125),
-            't1_defense_skillbook': Region(580, 620, 125, 125),
-            't1_support_skillbook': Region(790, 620, 125, 125),
-            'start_lesson_button': Region(1660, 900, 150, 60)
+            'start_lesson_button': Region(1660, 900, 150, 60),
+            'cancel_lesson_button': Region(1345, 900, 170, 60)
         }
 
     def hq_logic_wrapper(self):
@@ -203,32 +194,27 @@ class HeadquartersModule(object):
         while True:
             Utils.wait_update_screen(1)
             
-            if Utils.find("headquarters/info_message"):
-                Utils.touch_randomly(self.region["skill_confirm_button"])
+            if Utils.find_and_touch("headquarters/skill_confirm_button"):
                 Logger.log_msg("Starting/ending skill levelling session.")
                 Utils.script_sleep(3.5)
                 continue
-            if Utils.find("headquarters/offense_boost", 0.99):
-                # levelling offesinve skill
-                Utils.touch_randomly(self.region["t{}_offense_skillbook".format(self.config.academy["skill_book_tier"])])
-                Logger.log_msg("Selected T{} offensive skill book.".format(self.config.academy["skill_book_tier"]))
-                self.stats.increment_offensive_skillbook_used()
-                Utils.script_sleep(1)
-                Utils.touch_randomly(self.region["start_lesson_button"])
-                continue
-            if Utils.find("headquarters/defense_boost", 0.99):
-                # levelling defensive skill
-                Utils.touch_randomly(self.region["t{}_defense_skillbook".format(self.config.academy["skill_book_tier"])])
-                Logger.log_msg("Selected T{} defensive skill book.".format(self.config.academy["skill_book_tier"]))
-                self.stats.increment_defensive_skillbook_used()
-                Utils.script_sleep(1)
-                Utils.touch_randomly(self.region["start_lesson_button"])
-                continue
-            if Utils.find("headquarters/support_boost", 0.99):
-                # levelling support skill
-                Utils.touch_randomly(self.region["t{}_support_skillbook".format(self.config.academy["skill_book_tier"])])
-                Logger.log_msg("Selected T{} support skill book.".format(self.config.academy["skill_book_tier"]))
-                self.stats.increment_support_skillbook_used()
+            if Utils.find("headquarters/skill_exp_gain"):
+                if Utils.find_and_touch("headquarters/t{}_offense_skillbook".format(self.config.academy["skill_book_tier"]), 0.99):
+                    # levelling offesinve skill
+                    Logger.log_msg("Selected T{} offensive skill book.".format(self.config.academy["skill_book_tier"]))
+                    self.stats.increment_offensive_skillbook_used()
+                elif Utils.find_and_touch("headquarters/t{}_defense_skillbook".format(self.config.academy["skill_book_tier"]), 0.99):
+                    # levelling defesinve skill
+                    Logger.log_msg("Selected T{} defensive skill book.".format(self.config.academy["skill_book_tier"]))
+                    self.stats.increment_defensive_skillbook_used()
+                elif Utils.find_and_touch("headquarters/t{}_support_skillbook".format(self.config.academy["skill_book_tier"]), 0.99):
+                    # levelling support skill
+                    Logger.log_msg("Selected T{} support skill book.".format(self.config.academy["skill_book_tier"]))
+                    self.stats.increment_support_skillbook_used()
+                else:
+                    Logger.log_warning("Skillbook specified not found. Cancelling lesson.")
+                    Utils.touch_randomly(self.region["cancel_lesson_button"])
+                    continue
                 Utils.script_sleep(1)
                 Utils.touch_randomly(self.region["start_lesson_button"])
                 continue
