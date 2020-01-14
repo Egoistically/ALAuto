@@ -120,6 +120,7 @@ class CommissionModule(object):
 
     def start_commission(self):
         Logger.log_debug("Starting commission.")
+        tapped_recommend = False
 
         while True:
             Utils.update_screen()
@@ -133,13 +134,15 @@ class CommissionModule(object):
                 Logger.log_debug("Found commission oil warning message.")
                 Utils.touch_randomly(self.region["oil_warning"])
                 continue
-            if Utils.find("commission/button_ready"):
+            if tapped_recommend and Utils.find("commission/button_ready"):
                 Logger.log_debug("Found commission start button.")
                 Utils.touch_randomly(self.region["commission_start"])
+                tapped_recommend = False
                 continue
             if Utils.find("commission/button_recommend"):
                 Logger.log_debug("Found commission recommend button.")
                 Utils.touch_randomly(self.region["commission_recommend"])
+                tapped_recommend = True
                 continue
 
         Utils.wait_update_screen(1)
