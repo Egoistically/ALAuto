@@ -83,7 +83,7 @@ class HeadquartersModule(object):
                 continue
             if Utils.find("headquarters/cat_lodge_alert", 0.99):
                 # if only the cat lodge alert is detected as valid alert, ignore it
-                Logger.log_msg("Cat lodge alert detected, ignoring it.")                
+                Logger.log_msg("Cat lodge alert detected, ignoring it.")
             if counterHQ < 5 and Utils.find("headquarters/hq_alert"):
                 # counterHQ = 5 only if academy has been opened two times and dorm three times
                 # the find fails if it's on the main menu and there is no alert or if it is on the selection screen
@@ -146,7 +146,7 @@ class HeadquartersModule(object):
                 # swipe bottom (also countering the previous swipe) and refresh
                 Utils.swipe(960, 540, 960, 40, 300)
                 continue
-        
+
         # restore UI
         Utils.touch_randomly(self.region["dorm_eye_button"])
 
@@ -193,8 +193,8 @@ class HeadquartersModule(object):
 
         while True:
             Utils.wait_update_screen(1)
-            
-            if Utils.find_and_touch("headquarters/skill_confirm_button"):
+
+            if Utils.find_and_touch("commission/button_confirm"):
                 Logger.log_msg("Starting/ending skill levelling session.")
                 Utils.script_sleep(3.5)
                 continue
