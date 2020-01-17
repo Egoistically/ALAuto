@@ -130,7 +130,7 @@ class CommissionModule(object):
                 Utils.touch_randomly(self.region["dismiss_message"])
                 self.stats.increment_commissions_started()
                 break
-            if Utils.find("commission/button_confirm"):
+            if Utils.find("menu/button_confirm"):
                 Logger.log_debug("Found commission oil warning message.")
                 Utils.touch_randomly(self.region["oil_warning"])
                 continue

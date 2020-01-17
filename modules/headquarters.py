@@ -194,7 +194,7 @@ class HeadquartersModule(object):
         while True:
             Utils.wait_update_screen(1)
 
-            if Utils.find_and_touch("commission/button_confirm"):
+            if Utils.find_and_touch("menu/button_confirm"):
                 Logger.log_msg("Starting/ending skill levelling session.")
                 Utils.script_sleep(3.5)
                 continue

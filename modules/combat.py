@@ -71,7 +71,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 2
                 break
-            if Utils.find("commission/button_confirm"):
+            if Utils.find("menu/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
@@ -234,7 +234,7 @@ class CombatModule(object):
                 Utils.script_sleep(3)
                 self.exit = 4
                 return
-            if Utils.find("commission/button_confirm"):
+            if Utils.find("menu/button_confirm"):
                 Logger.log_msg("Found commission info message.")
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
@@ -366,7 +366,7 @@ class CombatModule(object):
             if Utils.find("combat/button_retreat"):
                 Utils.touch_randomly(self.region['retreat_button'])
                 continue
-            if Utils.find("commission/button_confirm"):
+            if Utils.find("menu/button_confirm"):
                 Utils.touch_randomly(self.region['dismiss_commission_dialog'])
                 continue
             if Utils.find("menu/attack"):
