@@ -88,6 +88,7 @@ class Config(object):
         """
         self.combat['enabled'] = True
         self.combat['map'] = config.get('Combat', 'Map')
+        self.combat['boss_fleet'] = config.getboolean('Combat', 'BossFleet')
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
         self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
@@ -135,9 +136,9 @@ class Config(object):
         valid_servers = ['EN', 'JP']
         if self.assets['server'] not in valid_servers:
             if len(valid_servers) < 2:
-                Logger.log_error("Invalid assets configured. Only {} is supported.".format(''.join(valid_servers)))
+                Logger.log_error("Invalid server assets configured. Only {} is supported.".format(''.join(valid_servers)))
             else:
-                Logger.log_error("Invalid assets configured. Only {} and {} are supported.".format(', '.join(valid_servers[:-1]), valid_servers[-1]))
+                Logger.log_error("Invalid server assets configured. Only {} and {} are supported.".format(', '.join(valid_servers[:-1]), valid_servers[-1]))
             self.ok = False
 
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
@@ -152,7 +153,7 @@ class Config(object):
 
         if self.combat['enabled']:
             map = self.combat['map'].split('-')
-            valid_chapters = list(range(1, 13)) + ['E']
+            valid_chapters = list(range(1, 14)) + ['E']
             valid_levels = list(range(1, 5)) + ['A1', 'A2', 'A3', 'A4',
                                                 'B1', 'B2', 'B3', 'B4',
                                                 'C1', 'C2', 'C3', 'C4',

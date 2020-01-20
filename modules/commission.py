@@ -54,7 +54,11 @@ class CommissionModule(object):
             if Utils.find("commission/alert_available", 0.9) and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available", 0.9).y):
                 Logger.log_debug("Found commission available indicator.")
                 Utils.touch_randomly(self.region["button_go"])
-                Utils.script_sleep(1)
+                Utils.wait_update_screen(1)
+
+                while not Utils.find("menu/commission"):
+                    Utils.touch_randomly(self.region["button_go"])
+                    Utils.wait_update_screen(1)
 
                 if self.urgent_handler():
                     self.daily_handler()
@@ -63,10 +67,9 @@ class CommissionModule(object):
             if Utils.find("commission/button_go") and (lambda x:x > 332 and x < 511)(Utils.find("commission/button_go").y):
                 Logger.log_msg("All commissions are running.")
                 Utils.touch_randomly(self.region["dismiss_side_tab"])
-                Utils.wait_update_screen(3)
                 break
 
-        Utils.wait_update_screen(1)
+        Utils.wait_update_screen()
         return True
 
     def completed_handler(self):

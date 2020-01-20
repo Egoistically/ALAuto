@@ -46,6 +46,7 @@ class CombatModule(object):
             'event_button': Region(1770, 250, 75, 75),
             'lock_ship_button': Region(1086, 739, 200, 55),
             'clear_second_fleet': Region(1690, 473, 40, 40),
+            'button_switch_fleet': Region(1430, 985, 240, 60),
             'menu_nav_back': Region(54, 57, 67, 67)
         }
 
@@ -80,12 +81,10 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["menu_button_battle"])
                 Utils.wait_update_screen(1)
                 continue
-            if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y):
-                if not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1 or \
-                    self.chapter_map[0].isdigit():
+            if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y) and not self.config.combat['boss_fleet']:
+                if not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1 or self.chapter_map[0].isdigit():
                     Logger.log_msg("Removing second fleet from fleet selection.")
                     Utils.touch_randomly(self.region["clear_second_fleet"])
-                continue
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
@@ -142,7 +141,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
         else:
-            for x in range(1, 13):
+            for x in range(1, 14):
                 if Utils.find("maps/map_{}-1".format(x), 0.99):
                     _map = x
                     break
@@ -386,12 +385,18 @@ class CombatModule(object):
             Utils.wait_update_screen()
 
         #swipe map to fit everything on screen
-        def swipe(cmap):
-            if cmap == 'E-C3' or cmap == 'E-A3':
-                Utils.swipe(960, 800, 960, 400, 100)
-            else:
-                Utils.swipe(960, 540, 1300, 540, 100)
-        swipe(self.chapter_map)
+        swipes = {
+            'E-C3': lambda: Utils.swipe(960, 800, 960, 400, 100),
+            'E-A3': lambda: Utils.swipe(960, 800, 960, 400, 100),
+            '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 100),
+            '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 100),
+            '12-4': lambda: Utils.swipe(960, 300, 960, 540, 100),
+            '13-1': lambda: Utils.swipe(1020, 500, 1300, 540, 100),
+            '13-2': lambda: Utils.swipe(1125, 550, 1300, 540, 100),
+            '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 100),
+            '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 100)
+        }
+        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 100))()
 
         target_info = self.get_closest_target(self.blacklist)
 
@@ -409,6 +414,30 @@ class CombatModule(object):
                 return True
             if Utils.find("enemy/fleet_boss", 0.9, self.chapter_map):
                 Logger.log_msg("Boss fleet was found.")
+
+                if self.config.combat['boss_fleet']:
+                    s = 0
+                    swipes = {
+                        0: lambda: Utils.swipe(960, 240, 960, 940, 300),
+                        1: lambda: Utils.swipe(1560, 540, 260, 540, 300),
+                        2: lambda: Utils.swipe(960, 940, 960, 240, 300),
+                        3: lambda: Utils.swipe(260, 540, 1560, 540, 300)
+                    }
+
+                    Utils.touch_randomly(self.region['button_switch_fleet'])
+                    Utils.wait_update_screen(2)
+                    boss_region = Utils.find("enemy/fleet_boss", 0.9, self.chapter_map)
+
+                    while not boss_region:
+                        if s > 3: s = 0
+                        swipes.get(s)()
+
+                        Utils.wait_update_screen(0.5)
+                        boss_region = Utils.find("enemy/fleet_boss", 0.85, self.chapter_map)
+                        s += 1
+                    Utils.swipe(boss_region.x, boss_region.y, 960, 540, 300)
+                    Utils.wait_update_screen()
+
                 boss_region = Utils.find("enemy/fleet_boss", 0.9, self.chapter_map)
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
@@ -462,28 +491,39 @@ class CombatModule(object):
                 Utils.script_sleep(3)
                 return
 
-    def get_enemies(self, blacklist=[]):
+    def get_enemies(self, blacklist=[], boss=False):
         sim = 0.99
-        if blacklist != []:
+        i = 0
+        if blacklist:
             Logger.log_info('Blacklist: ' + str(blacklist))
             self.l = [x for x in self.l if (x not in blacklist)]
 
-        while self.l == []:
+        while not self.l:
+            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 1) or sim < 0.95:
+                if i > 3: i = 0
+                swipes = {
+                    0: lambda: Utils.swipe(960, 240, 960, 940, 300),
+                    1: lambda: Utils.swipe(1560, 540, 260, 540, 300),
+                    2: lambda: Utils.swipe(960, 940, 960, 240, 300),
+                    3: lambda: Utils.swipe(260, 540, 1560, 540, 300)
+                }
+                swipes.get(i)()
+                sim += 0.005
+                i += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15, self.chapter_map)))
+            l1 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15, self.chapter_map)))
             l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            l2 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim, self.chapter_map)))
+            l2 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim, self.chapter_map)))
             l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            l3 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02, self.chapter_map)))
+            l3 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02, self.chapter_map)))
             l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            l4 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06, self.chapter_map)))
+            l4 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06, self.chapter_map)))
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            l5 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
+            l5 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            l6 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06, self.chapter_map)))
+            l6 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06, self.chapter_map)))
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
-
 
             self.l = l1 + l2 + l3 + l4 + l5 + l6
             sim -= 0.005
@@ -550,13 +590,14 @@ class CombatModule(object):
             enemy to the specified location
         """
         while True:
+            boss = True if location else False
             fleet_location = self.get_fleet_location()
             mystery_nodes = []
 
             if location == []:
                 location = fleet_location
 
-            enemies = self.get_enemies(blacklist)
+            enemies = self.get_enemies(blacklist, boss)
 
             if mystery_node:
                 sim = 0.9
