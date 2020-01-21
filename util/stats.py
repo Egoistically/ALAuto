@@ -121,7 +121,7 @@ class Stats(object):
         """Increments the number of defensive skill book used
         """
         self.defensive_skillbook += 1
-    
+
     def increment_support_skillbook_used(self):
         """Increments the number of support skill book used
         """
