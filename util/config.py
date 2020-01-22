@@ -110,7 +110,7 @@ class Config(object):
         """
         self.events['enabled'] = True
         self.events['name'] = config.get('Events', 'Event')
-        self.events['levels'] = config.get('Events', 'Levels')
+        self.events['levels'] = config.get('Events', 'Levels').split(',')
 
     def validate(self):
         def try_cast_to_int(val):
@@ -171,7 +171,8 @@ class Config(object):
 
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']
-            if self.events['name'] not in events or ',' not in self.events['levels']:
+            stages = ['EX', 'H', 'N', 'E']
+            if self.events['name'] not in events or all(elem not in stages  for elem in self.events['levels']):
                 self.ok = False
                 Logger.log_error("Invalid event settings, please check the wiki.")
 

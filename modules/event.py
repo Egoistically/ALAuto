@@ -14,7 +14,7 @@ class EventModule(object):
         self.config = config
         self.stats = stats
         self.last_enhance = 0
-        self.levels = config.events['levels'].split(',')
+        self.levels = config.events['levels']
         self.finished = False
         self.region = {
             'menu_fleet_go': Region(1485, 872, 270, 74),
@@ -23,6 +23,7 @@ class EventModule(object):
             'dismiss_combat_finished': Region(725, 965, 647, 76),
             'combat_end_confirm': Region(1520, 963, 216, 58),
             'close_info_dialog': Region(1319, 217, 47, 47),
+            'combat_dismiss_surface_fleet_summary': Region(790, 950, 250, 65),
 
             'crosswave_ex': Region(1718, 246, 75, 75),
             'crosswave_hard': Region(1650, 449, 75, 75),
@@ -52,7 +53,7 @@ class EventModule(object):
             Logger.log_msg("Event levels: " + str(self.levels))
 
             while ('EX' in self.levels):
-                Utils.update_screen()
+                Utils.wait_update_screen(1)
                 if Utils.find(f"event/{event}/ex_completed", 0.98):
                     Logger.log_info("No more EX combats to do.")
                     break
@@ -62,7 +63,7 @@ class EventModule(object):
                     self.combat_handler()
                     Logger.log_msg(f"Finished EX {event.replace('_', ' ')} combat.")
             while ('H' in self.levels):
-                Utils.update_screen()
+                Utils.wait_update_screen(1)
                 if Utils.find(f"event/{event}/hard_completed"):
                     Logger.log_info("No more Hard combats to do.")
                     break
@@ -72,7 +73,7 @@ class EventModule(object):
                     self.combat_handler()
                     Logger.log_msg(f"Finished Hard {event.replace('_', ' ')} combat.")
             while ('N' in self.levels):
-                Utils.update_screen()
+                Utils.wait_update_screen(1)
                 if Utils.find(f"event/{event}/normal_completed"):
                     Logger.log_info("No more Normal combats to do.")
                     break
@@ -82,7 +83,7 @@ class EventModule(object):
                     self.combat_handler()
                     Logger.log_msg(f"Finished Normal {event.replace('_', ' ')} combat.")
             while ('E' in self.levels):
-                Utils.update_screen()
+                Utils.wait_update_screen(1)
                 if Utils.find(f"event/{event}/easy_completed"):
                     Logger.log_info("No more Easy combats to do.")
                     break
@@ -102,7 +103,7 @@ class EventModule(object):
         """Handles pre-combat stuff like fleet selection and starts combat_handler function.
         """
         while True:
-            Utils.wait_update_screen()
+            Utils.wait_update_screen(1)
 
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found event fleet go button.")
@@ -121,7 +122,7 @@ class EventModule(object):
         Utils.script_sleep(4)
 
         while True:
-            Utils.update_screen()
+            Utils.wait_update_screen(1)
 
             if Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
@@ -140,6 +141,11 @@ class EventModule(object):
                 self.stats.increment_combat_done()
                 Utils.script_sleep(1)
                 return
+            if Utils.find("combat/commander"):
+                # prevents fleet with submarines from getting stuck at combat end screen
+                Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
+                Utils.script_sleep(1)
+                continue
             if Utils.find("combat/menu_combat_finished"):
                 Utils.touch_randomly(self.region['dismiss_combat_finished'])
                 Utils.script_sleep(1)

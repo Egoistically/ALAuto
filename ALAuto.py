@@ -71,7 +71,8 @@ class ALAuto(object):
         return self.modules['combat'] \
             and script.next_combat != 0 \
             and script.next_combat < datetime.now() \
-            and Utils.check_oil(self.oil_limit)
+            and Utils.check_oil(self.oil_limit) \
+            or self.modules['event']
 
     def run_sortie_cycle(self):
         """Method to run all cycles related to combat.
