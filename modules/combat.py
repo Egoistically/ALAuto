@@ -412,7 +412,7 @@ class CombatModule(object):
             if self.exit != 0:
                 self.retreat_handler()
                 return True
-            if Utils.find("enemy/fleet_boss", 0.9, self.chapter_map):
+            if Utils.find("enemy/fleet_boss", 0.85, self.chapter_map):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:

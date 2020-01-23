@@ -172,7 +172,7 @@ class Config(object):
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']
             stages = ['EX', 'H', 'N', 'E']
-            if self.events['name'] not in events or all(elem not in stages  for elem in self.events['levels']):
+            if self.events['name'] not in events or all(elem not in stages for elem in self.events['levels']):
                 self.ok = False
                 Logger.log_error("Invalid event settings, please check the wiki.")
 

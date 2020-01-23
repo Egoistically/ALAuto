@@ -68,11 +68,10 @@ class ALAuto(object):
     def should_sortie(self):
         """Method to check wether bot should combat or not.
         """
-        return self.modules['combat'] \
+        return (self.modules['combat'] or self.modules['event']) \
             and script.next_combat != 0 \
             and script.next_combat < datetime.now() \
-            and Utils.check_oil(self.oil_limit) \
-            or self.modules['event']
+            and Utils.check_oil(self.oil_limit)
 
     def run_sortie_cycle(self):
         """Method to run all cycles related to combat.
