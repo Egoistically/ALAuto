@@ -512,17 +512,17 @@ class CombatModule(object):
                 i += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15, self.chapter_map)))
+            l1 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15)))
             l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            l2 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim, self.chapter_map)))
+            l2 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim)))
             l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            l3 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02, self.chapter_map)))
+            l3 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
             l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            l4 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06, self.chapter_map)))
+            l4 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            l5 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
+            l5 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            l6 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06, self.chapter_map)))
+            l6 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06)))
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5 + l6
@@ -605,7 +605,7 @@ class CombatModule(object):
                 while mystery_nodes == []:
                     Utils.update_screen()
 
-                    l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+                    l1 = filter(lambda x:x[1] > 80 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
                     l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                     mystery_nodes = l1

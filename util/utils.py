@@ -199,7 +199,7 @@ class Utils(object):
         return None
 
     @classmethod
-    def find_all(cls, image, similarity=DEFAULT_SIMILARITY, cmap=None):
+    def find_all(cls, image, similarity=DEFAULT_SIMILARITY):
         """Finds all locations of the image on the screen
 
         Args:
@@ -212,28 +212,37 @@ class Utils(object):
         """
         del cls.locations
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
-        if cmap != None and cmap == '7-1':
-            template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         cls.locations = numpy.where(match >= similarity)
 
-        pool = ThreadPool(processes=2)
-        count = 1.10
+        pool = ThreadPool(processes=4)
+        count = 1.20
+        results_list = []
 
-        while (len(cls.locations[0]) < 1) and (count > 0.85):
-            result = pool.apply_async(cls.match_resize, (template, count, similarity - 0.8))
+        while (len(cls.locations[0]) < 1) and (count > 0.80):
+            result = pool.apply_async(cls.match_resize, (template, count, similarity))
+            count -= 0.02
+            results_list.append(result)
+            result = pool.apply_async(cls.match_resize, (template, count, similarity))
             cls.script_sleep(0.01)
             count -= 0.02
+            results_list.append(result)
 
         pool.close()
+        pool.join()
+
+        # extracting locations from pool's results
+        for i in range(0, len(results_list)):
+            cls.locations = numpy.append(cls.locations, results_list[i].get(), axis=1)
+
         return cls.filter_similar_coords(
             list(zip(cls.locations[1], cls.locations[0])))
 
     @classmethod
     def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
-        template_resize = cv2.resize(image, (), fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
+        template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
-        numpy.append(cls.locations, numpy.where(match_resize >= similarity))
+        return numpy.where(match_resize >= similarity)
 
     @classmethod
     def touch(cls, coords):
