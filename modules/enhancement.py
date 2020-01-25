@@ -131,5 +131,5 @@ class EnhancementModule(object):
             bool: True if the script needs to retire ships
         """
         # check if it has already retired with current combat count so it doesn't enter a loop
-        if self.stats.combat_done > self.last_enhance:
+        if self.config.combat['enabled'] and self.stats.combat_done > self.last_enhance:
             return self.stats.combat_done % int(self.config.combat['retire_cycle']) == 0

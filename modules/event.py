@@ -24,6 +24,7 @@ class EventModule(object):
             'combat_end_confirm': Region(1520, 963, 216, 58),
             'close_info_dialog': Region(1319, 217, 47, 47),
             'combat_dismiss_surface_fleet_summary': Region(790, 950, 250, 65),
+            'combat_button_no': Region(689, 757, 93, 46),
 
             'crosswave_ex': Region(1718, 246, 75, 75),
             'crosswave_hard': Region(1650, 449, 75, 75),
@@ -64,7 +65,7 @@ class EventModule(object):
                     Logger.log_msg(f"Finished EX {event.replace('_', ' ')} combat.")
             while ('H' in self.levels):
                 Utils.wait_update_screen(1)
-                if Utils.find(f"event/{event}/hard_completed"):
+                if Utils.find(f"event/{event}/hard_completed") and not self.config.events['ignore_rateup']:
                     Logger.log_info("No more Hard combats to do.")
                     break
 
@@ -74,7 +75,7 @@ class EventModule(object):
                     Logger.log_msg(f"Finished Hard {event.replace('_', ' ')} combat.")
             while ('N' in self.levels):
                 Utils.wait_update_screen(1)
-                if Utils.find(f"event/{event}/normal_completed"):
+                if Utils.find(f"event/{event}/normal_completed") and not self.config.events['ignore_rateup']:
                     Logger.log_info("No more Normal combats to do.")
                     break
 
@@ -84,7 +85,7 @@ class EventModule(object):
                     Logger.log_msg(f"Finished Normal {event.replace('_', ' ')} combat.")
             while ('E' in self.levels):
                 Utils.wait_update_screen(1)
-                if Utils.find(f"event/{event}/easy_completed"):
+                if Utils.find(f"event/{event}/easy_completed") and not self.config.events['ignore_rateup']:
                     Logger.log_info("No more Easy combats to do.")
                     break
 
@@ -124,6 +125,10 @@ class EventModule(object):
         while True:
             Utils.wait_update_screen(1)
 
+            if Utils.find("event/button_no"):
+                Utils.touch_randomly(self.region['combat_button_no'])
+                Utils.script_sleep(1)
+                continue
             if Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
                 Utils.script_sleep(5)

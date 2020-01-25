@@ -111,6 +111,7 @@ class Config(object):
         self.events['enabled'] = True
         self.events['name'] = config.get('Events', 'Event')
         self.events['levels'] = config.get('Events', 'Levels').split(',')
+        self.events['ignore_rateup'] = config.getboolean('Events', 'IgnoreRateUp')
 
     def validate(self):
         def try_cast_to_int(val):
