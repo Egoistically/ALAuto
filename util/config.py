@@ -92,6 +92,7 @@ class Config(object):
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
         self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
+        self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
@@ -169,6 +170,10 @@ class Config(object):
             if not isinstance(self.combat['oil_limit'], int):
                 self.ok = False
                 Logger.log_error("Oil limit must be an integer.")
+
+            if map[0] != "E" and self.combat['small_boss_icon']:
+                self.ok = False
+                Logger.log_error("Story maps don't have small boss icon.")
 
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']
