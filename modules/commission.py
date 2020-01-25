@@ -59,6 +59,8 @@ class CommissionModule(object):
                 while not Utils.find("menu/commission"):
                     Utils.touch_randomly(self.region["button_go"])
                     Utils.wait_update_screen(1)
+                    if Utils.find_and_touch("menu/alert_close"):
+                        Utils.script_sleep(1)
 
                 if self.urgent_handler():
                     self.daily_handler()

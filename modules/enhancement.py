@@ -51,6 +51,9 @@ class EnhancementModule(object):
                 if Utils.find("menu/dock"):
                     Utils.touch_randomly(self.region['button_favorite'])
                     continue
+                else:
+                    Utils.touch_randomly(self.region['button_go_back'])
+                    Utils.script_sleep(2)
 
     def enhance_ship(self):
         """

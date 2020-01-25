@@ -55,7 +55,7 @@ class EventModule(object):
 
             while ('EX' in self.levels):
                 Utils.wait_update_screen(1)
-                if Utils.find(f"event/{event}/ex_completed", 0.98):
+                if Utils.find(f"event/{event}/ex_completed", 0.99):
                     Logger.log_info("No more EX combats to do.")
                     break
 
