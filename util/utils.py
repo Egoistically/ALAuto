@@ -31,6 +31,7 @@ last_ocr = ''
 
 class Utils(object):
 
+    small_boss_icon = False
     DEFAULT_SIMILARITY = 0.95
     assets = ''
     locations = ()
@@ -174,7 +175,7 @@ class Utils(object):
         return
 
     @classmethod
-    def find(cls, image, similarity=DEFAULT_SIMILARITY, cmap=None):
+    def find(cls, image, similarity=DEFAULT_SIMILARITY):
         """Finds the specified image on the screen
 
         Args:
@@ -186,11 +187,6 @@ class Utils(object):
             Region: region object containing the location and size of the image
         """
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
-        if cmap != None:
-            if cmap == '7-1':
-                template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
-            if (cmap == 'E-B3' or cmap == 'E-D3') and image == 'enemy/fleet_boss':
-                template = cv2.resize(template, None, fx = 0.49, fy = 0.49, interpolation = cv2.INTER_NEAREST)
         width, height = template.shape[::-1]
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
@@ -199,7 +195,88 @@ class Utils(object):
         return None
 
     @classmethod
-    def find_all(cls, image, similarity=DEFAULT_SIMILARITY, cmap=None):
+    def find_in_scaling_range(cls, image, similarity=DEFAULT_SIMILARITY, lowerEnd=0.8, upperEnd=1.2):
+        """Finds the location of the image on the screen. First the image is searched at its default scale,
+        and if it isn't found, it will be resized using values inside the range provided until a match that satisfy
+        the similarity value is found. If the image isn't found even after it has been resized, the method returns None.
+
+        Args:
+            image (string): Name of the image.
+            similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
+                Percentage in similarity that the image should at least match
+            lowerEnd (float, optional): Defaults to 0.8.
+                Lowest scaling factor used for resizing.
+            upperEnd (float, optional): Defaults to 1.2.
+                Highest scaling factor used for resizing.
+
+        Returns:
+            Region: Coordinates or where the image appears.
+        """
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
+        # first try with default size
+        width, height = template.shape[::-1]
+        match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
+        if (value >= similarity):
+            return Region(location[0], location[1], width, height)
+
+        # resize and match using threads
+
+        # change scaling factor if the boss icon searched is small
+        # (some events has as boss fleet a shipgirl with a small boss icon at her bottom right)
+        if cls.small_boss_icon and image == 'enemy/fleet_boss':
+            lowerEnd = 0.4
+            upperEnd = 0.6
+
+        # preparing interpolation methods        
+        middle_range = (upperEnd + lowerEnd)/2.0
+        if lowerEnd < 1 and upperEnd > 1 and middle_range == 1:
+            l_interpolation = cv2.INTER_AREA
+            u_interpolation = cv2.INTER_CUBIC
+        elif upperEnd < 1 and lowerEnd < upperEnd:
+            l_interpolation = cv2.INTER_AREA
+            u_interpolation = cv2.INTER_AREA
+        elif lowerEnd > 1 and upperEnd > lowerEnd:
+            l_interpolation = cv2.INTER_CUBIC
+            u_interpolation = cv2.INTER_CUBIC
+        else:
+            l_interpolation = cv2.INTER_NEAREST
+            u_interpolation = cv2.INTER_NEAREST
+
+        results_list = []
+        regions_detected = []
+        count = 0
+        loop_limiter = (middle_range - lowerEnd)*100
+
+        # creating and launching worker processes
+        pool = ThreadPool(processes=4)
+
+        while (upperEnd > lowerEnd) and (count < loop_limiter):
+            l_result = pool.apply_async(cls.resize_and_match, (template, lowerEnd, similarity, l_interpolation))
+            u_result = pool.apply_async(cls.resize_and_match, (template, upperEnd, similarity, u_interpolation))
+            cls.script_sleep(0.01)
+            lowerEnd+=0.02
+            upperEnd-=0.02
+            count +=1
+            results_list.append(l_result)
+            results_list.append(u_result)
+        
+        # closing pool and waiting for results
+        pool.close()
+        pool.join()
+
+        # extract regions from async_result
+        for i in range(0, len(results_list)):
+            if results_list[i].get() is not None:
+                regions_detected.append(results_list[i].get())
+
+        if (len(regions_detected)>0):
+            return regions_detected[0]
+        else:
+            return None
+
+    @classmethod
+    def find_all(cls, image, similarity=DEFAULT_SIMILARITY):
         """Finds all locations of the image on the screen
 
         Args:
@@ -212,28 +289,46 @@ class Utils(object):
         """
         del cls.locations
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
-        if cmap != None and cmap == '7-1':
-            template = cv2.resize(template, None, fx = 1.11, fy = 1.11, interpolation = cv2.INTER_NEAREST)
         match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
         cls.locations = numpy.where(match >= similarity)
 
-        pool = ThreadPool(processes=2)
-        count = 1.10
+        pool = ThreadPool(processes=4)
+        count = 1.20
+        results_list = []
 
-        while (len(cls.locations[0]) < 1) and (count > 0.85):
-            result = pool.apply_async(cls.match_resize, (template, count, similarity - 0.8))
+        while (len(cls.locations[0]) < 1) and (count > 0.80):
+            result = pool.apply_async(cls.match_resize, (template, count, similarity))
+            count -= 0.02
+            results_list.append(result)
+            result = pool.apply_async(cls.match_resize, (template, count, similarity))
             cls.script_sleep(0.01)
             count -= 0.02
+            results_list.append(result)
 
         pool.close()
+        pool.join()
+
+        # extracting locations from pool's results
+        for i in range(0, len(results_list)):
+            cls.locations = numpy.append(cls.locations, results_list[i].get(), axis=1)
+
         return cls.filter_similar_coords(
             list(zip(cls.locations[1], cls.locations[0])))
 
     @classmethod
     def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
-        template_resize = cv2.resize(image, (), fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
+        template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
-        numpy.append(cls.locations, numpy.where(match_resize >= similarity))
+        return numpy.where(match_resize >= similarity)
+
+    @classmethod
+    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
+        template_resize = cv2.resize(templateImage, None, fx = scale, fy = scale, interpolation = interpolationMethod)
+        width, height = template_resize.shape[::-1]
+        match = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
+        value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
+        if (value >= similarity):
+             return Region(location[0], location[1], width, height)
 
     @classmethod
     def touch(cls, coords):

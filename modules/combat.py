@@ -18,7 +18,7 @@ class CombatModule(object):
         self.config = config
         self.stats = stats
         self.chapter_map = self.config.combat['map']
-
+        Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
         self.combats_done = 0
         self.l = []
@@ -412,7 +412,7 @@ class CombatModule(object):
             if self.exit != 0:
                 self.retreat_handler()
                 return True
-            if Utils.find("enemy/fleet_boss", 0.85, self.chapter_map):
+            if Utils.find_in_scaling_range("enemy/fleet_boss"):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:
@@ -426,19 +426,19 @@ class CombatModule(object):
 
                     Utils.touch_randomly(self.region['button_switch_fleet'])
                     Utils.wait_update_screen(2)
-                    boss_region = Utils.find("enemy/fleet_boss", 0.9, self.chapter_map)
+                    boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
 
                     while not boss_region:
                         if s > 3: s = 0
                         swipes.get(s)()
 
                         Utils.wait_update_screen(0.5)
-                        boss_region = Utils.find("enemy/fleet_boss", 0.85, self.chapter_map)
+                        boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
                         s += 1
                     Utils.swipe(boss_region.x, boss_region.y, 960, 540, 300)
                     Utils.wait_update_screen()
 
-                boss_region = Utils.find("enemy/fleet_boss", 0.9, self.chapter_map)
+                boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
                 self.clear_boss(boss_info)
@@ -512,17 +512,17 @@ class CombatModule(object):
                 i += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15, self.chapter_map)))
+            l1 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15)))
             l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            l2 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim, self.chapter_map)))
+            l2 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim)))
             l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            l3 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02, self.chapter_map)))
+            l3 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
             l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            l4 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06, self.chapter_map)))
+            l4 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            l5 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06, self.chapter_map)))
+            l5 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            l6 = filter(lambda x:x[1] > 160 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06, self.chapter_map)))
+            l6 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06)))
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5 + l6
@@ -605,7 +605,7 @@ class CombatModule(object):
                 while mystery_nodes == []:
                     Utils.update_screen()
 
-                    l1 = filter(lambda x:x[1] > 80 and x[1] < 977 and x[0] > 180, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+                    l1 = filter(lambda x:x[1] > 80 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
                     l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                     mystery_nodes = l1
