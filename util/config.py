@@ -93,6 +93,7 @@ class Config(object):
         self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
         self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
+        self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.

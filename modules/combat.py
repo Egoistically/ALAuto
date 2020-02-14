@@ -527,6 +527,12 @@ class CombatModule(object):
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
 
             self.l = l1 + l2 + l3 + l4 + l5 + l6
+
+            if self.config.combat['siren_elites']:
+                l7 = Utils.find_enemies()
+                l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
+                self.l += l7
+			
             sim -= 0.005
 
         self.l = Utils.filter_similar_coords(self.l)

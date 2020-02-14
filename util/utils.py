@@ -316,6 +316,45 @@ class Utils(object):
             list(zip(cls.locations[1], cls.locations[0])))
 
     @classmethod
+    def find_enemies(cls):
+        # XXX: This should be pulled into its own method at some point.
+        color_screen = None
+        while color_screen is None:
+            if Adb.legacy:
+                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8), 1)
+            else:
+                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
+        
+        image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
+        
+        # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
+        lower_red = numpy.array([170,210,180])
+        upper_red = numpy.array([180,255,255])
+        mask = cv2.inRange(image, lower_red, upper_red)
+
+        ret, thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)
+        
+        # Build a structuring element to combine nearby contours together.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
+
+        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = list(filter(lambda x: cv2.contourArea(x) > 1000, contours))
+        
+        locations = []
+        for contour in contours:
+            hull = cv2.convexHull(contour)
+            M = cv2.moments(hull)
+            x = round(M['m10'] / M['m00'])
+            y = round(M['m01'] / M['m00'])
+            
+            # Avoid clicking on areas outside of the grid
+            if y > 160 and y < 938 and x > 180 and x < 1790:
+                locations.append([x, y])
+
+        return cls.filter_similar_coords(locations)
+
+    @classmethod
     def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
