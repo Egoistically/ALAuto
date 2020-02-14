@@ -160,7 +160,7 @@ class Config(object):
                                                 'B1', 'B2', 'B3', 'B4',
                                                 'C1', 'C2', 'C3', 'C4',
                                                 'D1', 'D2', 'D3', 'D4',
-                                                'SP1', 'SP2', 'SP3']
+                                                'SP1', 'SP2', 'SP3', 'SP4', 'SP5']
             if (try_cast_to_int(map[0]) not in valid_chapters or
                 try_cast_to_int(map[1]) not in valid_levels):
                 self.ok = False
