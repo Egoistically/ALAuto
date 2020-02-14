@@ -131,13 +131,13 @@ class CombatModule(object):
 
         if not self.chapter_map[0].isdigit():
             letter = self.chapter_map[2:3]
-            event_maps = ['A', 'B', 'C', 'D']
+            event_maps = ['A', 'B', 'S', 'C', 'D']
 
             Utils.touch_randomly(self.region['event_button'])
             Utils.wait_update_screen(1)
 
-            if event_maps.index(letter) < 2 and Utils.find("menu/button_normal_mode", 0.8) or \
-               event_maps.index(letter) > 1 and not Utils.find("menu/button_normal_mode", 0.8):
+            if event_maps.index(letter) < 3 and Utils.find("menu/button_normal_mode", 0.8) or \
+               event_maps.index(letter) > 2 and not Utils.find("menu/button_normal_mode", 0.8):
                 Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
         else:
@@ -388,6 +388,7 @@ class CombatModule(object):
         swipes = {
             'E-C3': lambda: Utils.swipe(960, 800, 960, 400, 100),
             'E-A3': lambda: Utils.swipe(960, 800, 960, 400, 100),
+            'E-SP5': lambda: Utils.swipe(350, 500, 960, 800, 100),
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 100),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 100),
             '12-4': lambda: Utils.swipe(960, 300, 960, 540, 100),
