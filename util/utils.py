@@ -316,7 +316,7 @@ class Utils(object):
             list(zip(cls.locations[1], cls.locations[0])))
 
     @classmethod
-    def find_enemies(cls):
+    def find_siren_elites(cls):
         # XXX: This should be pulled into its own method at some point.
         color_screen = None
         while color_screen is None:
@@ -339,7 +339,7 @@ class Utils(object):
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
         im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contours = list(filter(lambda x: cv2.contourArea(x) > 1000, contours))
+        contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
         
         locations = []
         for contour in contours:
@@ -347,9 +347,12 @@ class Utils(object):
             M = cv2.moments(hull)
             x = round(M['m10'] / M['m00'])
             y = round(M['m01'] / M['m00'])
-            
-            # Avoid clicking on areas outside of the grid
-            if y > 160 and y < 938 and x > 180 and x < 1790:
+            approx = cv2.approxPolyDP(hull, 0.04 * cv2.arcLength(contour, True), True)
+            bound_x, bound_y, width, height = cv2.boundingRect(approx)
+            aspect_ratio = width / float(height)
+    
+            # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
+            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.5:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)
