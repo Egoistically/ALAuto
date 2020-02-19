@@ -27,6 +27,9 @@ class CombatModule(object):
 
         self.region = {
             'fleet_lock': Region(1790, 750, 130, 30),
+            'open_strategy_menu': Region(1797, 617, 105, 90),
+            'disable_subs_hunting_radius': Region(1655, 615, 108, 108),
+            'close_strategy_menu': Region(1590, 615, 40, 105),
             'menu_button_battle': Region(1517, 442, 209, 206),
             'map_summary_go': Region(1289, 743, 280, 79),
             'fleet_menu_go': Region(1485, 872, 270, 74),
@@ -398,6 +401,15 @@ class CombatModule(object):
             '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 100)
         }
         swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 100))()
+
+        # disable subs' hunting range
+        if self.config.combat["hide_subs_hunting_range"]:
+            Utils.script_sleep(0.5)
+            Utils.touch_randomly(self.region["open_strategy_menu"])
+            Utils.script_sleep()
+            Utils.touch_randomly(self.region["disable_subs_hunting_radius"])
+            Utils.script_sleep()
+            Utils.touch_randomly(self.region["close_strategy_menu"])
 
         target_info = self.get_closest_target(self.blacklist)
 
