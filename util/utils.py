@@ -276,20 +276,31 @@ class Utils(object):
             return None
 
     @classmethod
-    def find_all(cls, image, similarity=DEFAULT_SIMILARITY):
+    def find_all(cls, image, similarity=DEFAULT_SIMILARITY, useMask=False):
         """Finds all locations of the image on the screen
 
         Args:
             image (string): Name of the image.
             similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
-                Percentage in similarity that the image should at least match
+                Percentage in similarity that the image should at least match.
+            useMask (boolean, optional): Defaults to False.
+                If set to True, this function uses a different comparison method and
+                a mask when searching for match.
 
         Returns:
             array: Array of all coordinates where the image appears
         """
         del cls.locations
+
+        if useMask:
+            comparison_method = cv2.TM_CCORR_NORMED
+            mask = cv2.imread('assets/{}/{}_mask.png'.format(cls.assets, image), 0)
+        else:
+            comparison_method = cv2.TM_CCOEFF_NORMED
+            mask = None
+        
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
-        match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
 
         pool = ThreadPool(processes=4)
@@ -297,10 +308,10 @@ class Utils(object):
         results_list = []
 
         while (len(cls.locations[0]) < 1) and (count > 0.80):
-            result = pool.apply_async(cls.match_resize, (template, count, similarity))
+            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
             count -= 0.02
             results_list.append(result)
-            result = pool.apply_async(cls.match_resize, (template, count, similarity))
+            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
             cls.script_sleep(0.01)
             count -= 0.02
             results_list.append(result)
@@ -358,9 +369,13 @@ class Utils(object):
         return cls.filter_similar_coords(locations)
 
     @classmethod
-    def match_resize(cls, image, scale, similarity=DEFAULT_SIMILARITY):
+    def match_resize(cls, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
-        match_resize = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
+        if useMask: 
+            mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
+        else:
+            mask_resize = None
+        match_resize = cv2.matchTemplate(screen, template_resize, comparison_method, mask=mask_resize)
         return numpy.where(match_resize >= similarity)
 
     @classmethod
@@ -474,7 +489,7 @@ class Utils(object):
         if len(coords) > 0:
             filtered_coords.append(coords[0])
             for coord in coords:
-                if cls.find_closest(filtered_coords, coord)[0] > 40:
+                if cls.find_closest(filtered_coords, coord)[0] > 50:
                     filtered_coords.append(coord)
         Logger.log_debug("Filtered Coords: " + str(filtered_coords))
         return filtered_coords
