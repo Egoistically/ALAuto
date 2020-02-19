@@ -526,7 +526,13 @@ class CombatModule(object):
             l6 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06)))
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
 
-            self.l = l1 + l2 + l3 + l4 + l5 + l6
+            if self.config.combat['siren_elites']:
+                l7 = Utils.find_siren_elites()
+                l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
+                self.l = l1 + l2 + l3 + l4 + l5 + l6 + l7
+            else:
+                self.l = l1 + l2 + l3 + l4 + l5 + l6
+			
             sim -= 0.005
 
         self.l = Utils.filter_similar_coords(self.l)
