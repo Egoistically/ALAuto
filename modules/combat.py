@@ -27,6 +27,9 @@ class CombatModule(object):
 
         self.region = {
             'fleet_lock': Region(1790, 750, 130, 30),
+            'open_strategy_menu': Region(1797, 617, 105, 90),
+            'disable_subs_hunting_radius': Region(1655, 615, 108, 108),
+            'close_strategy_menu': Region(1590, 615, 40, 105),
             'menu_button_battle': Region(1517, 442, 209, 206),
             'map_summary_go': Region(1289, 743, 280, 79),
             'fleet_menu_go': Region(1485, 872, 270, 74),
@@ -292,7 +295,10 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-            if event["combat/menu_formation"] or event["combat/menu_loading"]:
+            if event["combat/menu_loading"]:
+                return 1
+            elif event["combat/menu_formation"]:
+                Utils.find_and_touch("combat/auto_combat_off")
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
@@ -300,7 +306,6 @@ class CombatModule(object):
                 if count > 21:
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
                     self.blacklist.append(location[0:2])
-                    self.l.clear()
 
                     location = self.get_closest_target(self.blacklist)
                     count = 0
@@ -398,6 +403,15 @@ class CombatModule(object):
             '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 100)
         }
         swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 100))()
+
+        # disable subs' hunting range
+        if self.config.combat["hide_subs_hunting_range"]:
+            Utils.script_sleep(0.5)
+            Utils.touch_randomly(self.region["open_strategy_menu"])
+            Utils.script_sleep()
+            Utils.touch_randomly(self.region["disable_subs_hunting_radius"])
+            Utils.script_sleep()
+            Utils.touch_randomly(self.region["close_strategy_menu"])
 
         target_info = self.get_closest_target(self.blacklist)
 
@@ -497,10 +511,11 @@ class CombatModule(object):
         i = 0
         if blacklist:
             Logger.log_info('Blacklist: ' + str(blacklist))
-            self.l = [x for x in self.l if (x not in blacklist)]
+            if len(blacklist) > 2:
+                self.l.clear()
 
         while not self.l:
-            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 1) or sim < 0.95:
+            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.95:
                 if i > 3: i = 0
                 swipes = {
                     0: lambda: Utils.swipe(960, 240, 960, 940, 300),
@@ -513,22 +528,29 @@ class CombatModule(object):
                 i += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] - 3, x[1] - 45], Utils.find_all('enemy/fleet_level', sim - 0.15)))
+            l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all('enemy/fleet_level', sim - 0.035, useMask=True)))
             l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            l2 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim)))
+            Logger.log_debug("L1: " +str(l1))
+            l2 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim)))
             l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            l3 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
+            Logger.log_debug("L2: " +str(l2))
+            l3 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
             l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            l4 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 130], Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
+            Logger.log_debug("L3: " +str(l3))
+            l4 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all('enemy/fleet_3_up', sim - 0.06)))
             l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            l5 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
+            Logger.log_debug("L4: " +str(l4))
+            l5 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all('enemy/fleet_3_down', sim - 0.06)))
             l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            l6 = filter(lambda x:x[1] > 160 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.06)))
+            Logger.log_debug("L5: " +str(l5))
+            l6 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.04)))
             l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
+            Logger.log_debug("L6: " +str(l6))
 
             if self.config.combat['siren_elites']:
                 l7 = Utils.find_siren_elites()
                 l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L7: " +str(l7))
                 self.l = l1 + l2 + l3 + l4 + l5 + l6 + l7
             else:
                 self.l = l1 + l2 + l3 + l4 + l5 + l6
@@ -540,7 +562,7 @@ class CombatModule(object):
 
     def filter_blacklist(self, coord, blacklist):
         for y in blacklist:
-            if abs(coord[0] - y[0]) < 20 and abs(coord[1] - y[1]) < 20:
+            if abs(coord[0] - y[0]) < 40 and abs(coord[1] - y[1]) < 40:
                 return True
         return False
 
