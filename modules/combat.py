@@ -295,7 +295,10 @@ class CombatModule(object):
                 Logger.log_debug("Found alert.")
                 Utils.find_and_touch("menu/alert_close")
                 continue
-            if event["combat/menu_formation"] or event["combat/menu_loading"]:
+            if event["combat/menu_loading"]:
+                return 1
+            elif event["combat/menu_formation"]:
+                Utils.find_and_touch("combat/auto_combat_off")
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
