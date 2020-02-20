@@ -91,7 +91,7 @@ class RetirementModule(object):
                 # Touch the All button to clear any current filter
                 Utils.touch_randomly(self.region['all_ship_filter'])
                 continue
-            if not Utils.find("retirement/button_sort_common", 0.99):
+            if self.config.retirement['commons'] and not Utils.find("retirement/button_sort_common", 0.99):
                 Logger.log_debug("Retirement: Sorting commons")
                 Utils.touch_randomly(self.region['common_ship_filter'])
                 Utils.script_sleep(0.5)
