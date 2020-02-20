@@ -52,7 +52,17 @@ class Config(object):
         self.commissions['enabled'] = config.getboolean('Modules', 'Commissions')
         self.enhancement['enabled'] = config.getboolean('Modules', 'Enhancement')
         self.missions['enabled'] = config.getboolean('Modules', 'Missions')
-        self.retirement['enabled'] = config.getboolean('Modules', 'Retirement')
+        
+        if 'Retirement' in config:
+            # New retirement settings
+            self.retirement['enabled'] = config.getboolean('Retirement', 'enabled', fallback=False)
+            self.retirement['rares'] = config.getboolean('Retirement', 'Rares', fallback=True)
+        elif 'Retirement' in config['Modules']:
+            # Legacy retirement setting. Maintain classic rare retirement behavior
+            self.retirement['enabled'] = config.getboolean('Modules', 'Retirement')
+            self.retirement['rares'] = True
+        else:
+            self.retirement['enabled'] = False
 
         if config.getboolean('Events', 'Enabled'):
             self._read_event(config)
