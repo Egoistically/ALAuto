@@ -63,12 +63,6 @@ class Config(object):
             self.retirement['enabled'] = config.getboolean('Modules', 'Retirement')
             self.retirement['rares'] = True
             self.retirement['commons'] = True
-        else:
-            self.retirement['enabled'] = False
-            
-        if self.retirement['enabled'] and not (self.retirement['commons'] or self.retirement['rares']):
-            Logger.log_error("Invalid config. Retirement is enabled, but no ship rarities are selected.")
-            sys.exit(1)
 
         if config.getboolean('Events', 'Enabled'):
             self._read_event(config)
@@ -203,6 +197,11 @@ class Config(object):
             if self.events['name'] not in events or all(elem not in stages for elem in self.events['levels']):
                 self.ok = False
                 Logger.log_error("Invalid event settings, please check the wiki.")
+                
+        if self.retirement['enabled']:
+            if not (self.retirement['commons'] or self.retirement['rares']):
+                Logger.log_error("Retirement is enabled, but no ship rarities are selected.")
+                self.ok = False
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.
