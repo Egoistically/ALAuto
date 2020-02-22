@@ -82,6 +82,7 @@ class RetirementModule(object):
             Utils.update_screen()
 
     def set_sort(self):
+        Logger.log_debug("Retirement: " + repr(self.config.retirement))
         while not self.sorted:
             Utils.update_screen()
             if Utils.find("retirement/selected_none"):
@@ -90,6 +91,13 @@ class RetirementModule(object):
                 Utils.script_sleep(0.5)
                 # Touch the All button to clear any current filter
                 Utils.touch_randomly(self.region['all_ship_filter'])
+                Utils.script_sleep(0.5)
+                if self.config.retirement['commons']:
+                    Utils.touch_randomly(self.region['common_ship_filter'])
+                    Utils.script_sleep(0.5)
+                if self.config.retirement['rares']:
+                    Utils.touch_randomly(self.region['rare_ship_filter'])
+                    Utils.script_sleep(0.5)
                 continue
             if self.config.retirement['commons'] and not Utils.find("retirement/button_sort_common", 0.99):
                 Logger.log_debug("Retirement: Sorting commons")
