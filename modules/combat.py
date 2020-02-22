@@ -25,6 +25,30 @@ class CombatModule(object):
         self.blacklist = []
         self.movement_event = {}
 
+        self.kills_count = 0
+        self.kills_before_boss = {
+            '1-1': 1, '1-2': 2, '1-3': 2, '1-4': 3,
+            '2-1': 2, '2-2': 3, '2-3': 3, '2-4': 3,
+            '3-1': 3, '3-2': 3, '3-3': 3, '3-4': 3,
+            '4-1': 3, '4-2': 3, '4-3': 3, '4-4': 4,
+            '5-1': 4, '5-2': 4, '5-3': 4, '5-4': 4,
+            '6-1': 4, '6-2': 4, '6-3': 4, '6-4': 5,
+            '7-1': 5, '7-2': 5, '7-3': 5, '7-4': 5,
+            '8-1': 4, '8-2': 4, '8-3': 4, '8-4': 4,
+            '9-1': 5, '9-2': 5, '9-3': 5, '9-4': 5,
+            '10-1': 6, '10-2': 6, '10-3': 6, '10-4': 6,
+            '11-1': 6, '11-2': 6, '11-3': 6, '11-4': 6,
+            '12-1': 6, '12-2': 6, '12-3': 6, '12-4': 6,
+            '13-1': 6, '13-2': 6, '13-3': 6, '13-4': 7
+        }
+        if self.chapter_map not in self.kills_before_boss:
+            # check if current map is present in the dictionary and if it isn't,
+            # a new entry is added with kills_before_boss value
+            self.kills_before_boss[self.chapter_map] = self.config.combat['kills_before_boss']
+        elif self.config.combat['kills_before_boss'] != 0:
+            # updates default value with the one provided by the user
+            self.kills_before_boss[self.chapter_map] = self.config.combat['kills_before_boss']
+
         self.region = {
             'fleet_lock': Region(1790, 750, 130, 30),
             'open_strategy_menu': Region(1797, 617, 105, 90),
@@ -62,6 +86,7 @@ class CombatModule(object):
         """
         self.exit = 0
         self.combats_done = 0
+        self.kills_count = 0
         self.l.clear()
         self.blacklist.clear()
 
@@ -226,6 +251,7 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/button_confirm"):
                 Logger.log_msg("Combat ended.")
+                self.kills_count += 1
                 Utils.touch_randomly(self.region["combat_end_confirm"])
                 Utils.script_sleep(1)
                 if boss:
@@ -278,6 +304,7 @@ class CombatModule(object):
                 continue
             if event["combat/alert_failed_evade"]:
                 Logger.log_warning("Failed to evade ambush.")
+                self.kills_count -= 1
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 self.battle_handler()
                 continue
@@ -427,7 +454,7 @@ class CombatModule(object):
             if self.exit != 0:
                 self.retreat_handler()
                 return True
-            if Utils.find_in_scaling_range("enemy/fleet_boss"):
+            if self.kills_count >= self.kills_before_boss[self.chapter_map] and Utils.find_in_scaling_range("enemy/fleet_boss"):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:
