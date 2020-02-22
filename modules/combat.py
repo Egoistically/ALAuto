@@ -354,7 +354,7 @@ class CombatModule(object):
         """ Retreats if necessary.
         """
         while True:
-            Utils.update_screen()
+            Utils.wait_update_screen(2)
 
             if Utils.find("combat/alert_morale_low"):
                 Utils.touch_randomly(self.region['close_info_dialog'])
@@ -391,18 +391,18 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
-            'E-C3': lambda: Utils.swipe(960, 800, 960, 400, 100),
-            'E-A3': lambda: Utils.swipe(960, 800, 960, 400, 100),
-            'E-SP5': lambda: Utils.swipe(350, 500, 960, 800, 100),
-            '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 100),
-            '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 100),
-            '12-4': lambda: Utils.swipe(960, 300, 960, 540, 100),
-            '13-1': lambda: Utils.swipe(1020, 500, 1300, 540, 100),
-            '13-2': lambda: Utils.swipe(1125, 550, 1300, 540, 100),
-            '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 100),
-            '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 100)
+            'E-C3': lambda: Utils.swipe(960, 800, 960, 400, 300),
+            'E-A3': lambda: Utils.swipe(960, 800, 960, 400, 300),
+            'E-SP5': lambda: Utils.swipe(350, 500, 960, 800, 300),
+            '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
+            '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
+            '12-4': lambda: Utils.swipe(960, 300, 960, 540, 300),
+            '13-1': lambda: Utils.swipe(1020, 500, 1300, 540, 300),
+            '13-2': lambda: Utils.swipe(1125, 550, 1300, 540, 300),
+            '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 300),
+            '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 300)
         }
-        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 100))()
+        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 300))()
 
         # disable subs' hunting range
         if self.config.combat["hide_subs_hunting_range"]:

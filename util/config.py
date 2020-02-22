@@ -100,7 +100,7 @@ class Config(object):
         self.combat['map'] = config.get('Combat', 'Map')
         self.combat['boss_fleet'] = config.getboolean('Combat', 'BossFleet')
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
-        self.combat['retire_cycle'] = config.get('Combat', 'RetireCycle')
+        self.combat['retire_cycle'] = int(config.get('Combat', 'RetireCycle'))
         self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
         self.combat['hide_subs_hunting_range'] = config.getboolean('Combat', 'HideSubsHuntingRange')
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
@@ -182,6 +182,10 @@ class Config(object):
             if not isinstance(self.combat['oil_limit'], int):
                 self.ok = False
                 Logger.log_error("Oil limit must be an integer.")
+
+            if not isinstance(self.combat['retire_cycle'], int) or self.combat['retire_cycle'] <= 0:
+                self.ok = False
+                Logger.log_error("RetireCycle must be an integer > 0.")
 
             if map[0] != "E" and self.combat['siren_elites']:
                 self.ok = False

@@ -163,4 +163,4 @@ class RetirementModule(object):
         """
         # check if it has already retired with current combat count so it doesn't enter a loop
         if self.config.combat['enabled'] and self.stats.combat_done > self.last_retire:
-            return self.stats.combat_done % int(self.config.combat['retire_cycle']) == 0
+            return self.stats.combat_done % self.config.combat['retire_cycle'] == 0
