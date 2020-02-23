@@ -98,6 +98,7 @@ class Config(object):
         """
         self.combat['enabled'] = True
         self.combat['map'] = config.get('Combat', 'Map')
+        self.combat['kills_before_boss'] = int(config.get('Combat', 'KillsBeforeBoss'))
         self.combat['boss_fleet'] = config.getboolean('Combat', 'BossFleet')
         self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
         self.combat['retire_cycle'] = int(config.get('Combat', 'RetireCycle'))
@@ -190,6 +191,10 @@ class Config(object):
             if map[0] != "E" and self.combat['siren_elites']:
                 self.ok = False
                 Logger.log_error("Story maps don't have elite units.")
+
+            if not isinstance(self.combat['kills_before_boss'], int) or self.combat['kills_before_boss'] < 0:
+                self.ok = False
+                Logger.log_error("Invalid KillsBeforeBoss value: must be an integer >= 0.")
 
             if map[0] != "E" and self.combat['small_boss_icon']:
                 self.ok = False
