@@ -26,6 +26,23 @@ class Region(object):
         self.w = w
         self.h = h
 
+    def equal_approximated(self, region, tolerance=15):
+        """Compares this region to the one received and establishes if they are the same
+        region tolerating a difference in pixels up to the one prescribed by tolerance.
+
+        Args:
+            region (Region): The region to compare to.
+            tolerance (int, optional): Defaults to 15.
+                Highest difference of pixels tolerated to consider the two Regions equal.
+                If set to 0, the method becomes a "strict" equal.
+        """
+        valid_x = (self.x - tolerance, self.x + tolerance)
+        valid_y = (self.y - tolerance, self.y + tolerance)
+        valid_w = (self.w - tolerance, self.w + tolerance)
+        valid_h = (self.h - tolerance, self.h + tolerance)
+        return (valid_x[0] <= region.x <= valid_x[1]  and valid_y[0] <= region.y <= valid_y[1] and
+            valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
+
 screen = None
 last_ocr = ''
 
