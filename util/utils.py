@@ -72,7 +72,7 @@ class Utils(object):
     @staticmethod
     def update_screen():
         """Uses ADB to pull a screenshot of the device and then read it via CV2
-        and then returns the read image.
+        and then returns the read image. The image is in a grayscale format.
 
         Returns:
             image: A CV2 image object containing the current device screen.
@@ -97,6 +97,22 @@ class Utils(object):
         else:
             cls.script_sleep(time)
         cls.update_screen()
+
+    @staticmethod
+    def get_color_screen():
+        """Uses ADB to pull a screenshot of the device and then read it via CV2
+        and then returns the read image. The image is in a BGR format.
+
+        Returns:
+            image: A CV2 image object containing the current device screen.
+        """
+        color_screen = None
+        while color_screen is None:
+            if Adb.legacy:
+                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8), 1)
+            else:
+                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
+        return color_screen
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -328,13 +344,7 @@ class Utils(object):
 
     @classmethod
     def find_siren_elites(cls):
-        # XXX: This should be pulled into its own method at some point.
-        color_screen = None
-        while color_screen is None:
-            if Adb.legacy:
-                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8), 1)
-            else:
-                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
+        color_screen = cls.get_color_screen()
         
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
         
