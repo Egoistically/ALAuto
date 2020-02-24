@@ -131,6 +131,51 @@ class Utils(object):
                 color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
         return color_screen
 
+    @classmethod
+    def get_enabled_retirement_filters(cls):
+        """Method which returns the regions of all the options enabled in the retirement's sorting filter.
+
+        Returns:
+            regions: a list containing the Region objects detected.
+        """
+        image = cls.get_color_screen()
+        
+        # mask area of no interest, effectively creating a roi
+        roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
+        cv2.rectangle(roi, (410, 700), (1835, 790), color=(255,255,255), thickness=-1)
+        
+        # preparing the ends of the interval of blue colors allowed, BGR format
+        lower_blue = numpy.array([132, 97, 66], dtype = "uint8")
+        upper_blue = numpy.array([198, 130, 74], dtype = "uint8")
+
+        # find the colors within the specified boundaries
+        mask = cv2.inRange(image, lower_blue, upper_blue)
+
+        # apply roi, result is a black and white image where the white rectangles are the options enabled
+        result = cv2.bitwise_and(roi, mask)
+
+        # obtain countours, needed to calculate the rectangles' positions
+        cnts = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = grab_contours(cnts)
+
+        # loop over the contours and extract regions
+        regions = []
+        for c in cnts:
+            # calculates contours perimeter
+            perimeter = cv2.arcLength(c, True)
+            # approximates perimeter to a polygon with the specified precision
+            approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
+    
+            if len(approx) == 4:
+                # if approx is a rectangle, get bounding box
+                x, y, w, h = cv2.boundingRect(approx)
+                # print values
+                Logger.log_debug("Region x:{}, y:{}, w:{}, h:{}".format(x,y,w,h))
+                # appends to regions' list
+                regions.append(Region(x, y, w, h))
+
+        return regions
+
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
         """ Method to ocr numbers.
