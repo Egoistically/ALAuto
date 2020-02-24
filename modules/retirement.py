@@ -84,33 +84,42 @@ class RetirementModule(object):
     def set_sort(self):
         Logger.log_debug("Retirement: " + repr(self.config.retirement))
         while not self.sorted:
-            Utils.update_screen()
-            if Utils.find("retirement/selected_none"):
-                Logger.log_debug("Retirement: Opening sorting menu.")
-                Utils.touch_randomly(self.region['sort_filters_button'])
-                Utils.script_sleep(0.5)
-                # Touch the All button to clear any current filter
-                Utils.touch_randomly(self.region['all_ship_filter'])
-                Utils.script_sleep(0.5)
-                if self.config.retirement['commons']:
-                    Utils.touch_randomly(self.region['common_ship_filter'])
-                    Utils.script_sleep(0.5)
-                if self.config.retirement['rares']:
-                    Utils.touch_randomly(self.region['rare_ship_filter'])
-                    Utils.script_sleep(0.5)
-                continue
-            if self.config.retirement['commons'] and not Utils.find("retirement/button_sort_common", 0.99):
-                Logger.log_debug("Retirement: Sorting commons")
+            Logger.log_debug("Retirement: Opening sorting menu.")
+            Utils.touch_randomly(self.region['sort_filters_button'])
+            Utils.script_sleep(0.5)
+            # Touch the All button to clear any current filter
+            Utils.touch_randomly(self.region['all_ship_filter'])
+            Utils.script_sleep(0.5)
+            if self.config.retirement['commons']:
                 Utils.touch_randomly(self.region['common_ship_filter'])
                 Utils.script_sleep(0.5)
-                continue
-            if self.config.retirement['rares'] and not Utils.find('retirement/button_sort_rare', 0.99):
-                Logger.log_debug("Retirement: Sorting rares")
+            if self.config.retirement['rares']:
                 Utils.touch_randomly(self.region['rare_ship_filter'])
                 Utils.script_sleep(0.5)
-                continue            
-            Logger.log_debug("Retirement: Confirming sort options")
-            self.sorted = True
+            
+            # check if correct options are enabled
+            # get the regions of enabled options
+            options = Utils.get_enabled_retirement_filters()
+            if len(options) == 0:
+                # if the list is empty it probably means that there was an ui update
+                # pausing and requesting for user confirmation
+                Logger.log_error("No options detected. User's input required.")
+                input("Manually fix sorting options. Press Enter to continue...")
+                self.sorted = True
+            else:
+                retirements = (self.config.retirement['commons'], self.config.retirement['rares'])
+                checks = [False, False]
+                for option in options:
+                    # tolerance is set to 25 since the regions chosen for tapping are smaller than the actual ones
+                    if self.config.retirement['commons'] and self.region['common_ship_filter'].equal_approximated(option, 25):
+                        Logger.log_debug("Retirement: Sorting commons")
+                        checks[0] = True
+                    if self.config.retirement['rares'] and self.region['rare_ship_filter'].equal_approximated(option, 25):
+                        Logger.log_debug("Retirement: Sorting rares")
+                        checks[1] = True
+                if retirements == tuple(checks) and len(options) <= 2:
+                    Logger.log_debug("Retirement: Sorting options confirmed")
+                    self.sorted = True
             Utils.touch_randomly(self.region['confirm_filter_button'])
             Utils.script_sleep(1)
             
