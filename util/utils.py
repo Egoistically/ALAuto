@@ -145,8 +145,8 @@ class Utils(object):
         cv2.rectangle(roi, (410, 700), (1835, 790), color=(255,255,255), thickness=-1)
         
         # preparing the ends of the interval of blue colors allowed, BGR format
-        lower_blue = numpy.array([132, 97, 66], dtype = "uint8")
-        upper_blue = numpy.array([198, 130, 74], dtype = "uint8")
+        lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
+        upper_blue = numpy.array([207, 142, 92], dtype=numpy.uint8)
 
         # find the colors within the specified boundaries
         mask = cv2.inRange(image, lower_blue, upper_blue)
