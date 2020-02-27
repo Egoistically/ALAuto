@@ -142,7 +142,7 @@ class Utils(object):
         
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
-        cv2.rectangle(roi, (410, 700), (1835, 790), color=(255,255,255), thickness=-1)
+        cv2.rectangle(roi, (410, 636), (1835, 726), color=(255,255,255), thickness=-1)
         
         # preparing the ends of the interval of blue colors allowed, BGR format
         lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
@@ -411,7 +411,7 @@ class Utils(object):
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
         
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170,210,180])
+        lower_red = numpy.array([170,50,50])
         upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
@@ -435,7 +435,7 @@ class Utils(object):
             aspect_ratio = width / float(height)
     
             # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
-            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.5:
+            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.05:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)
