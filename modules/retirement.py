@@ -23,9 +23,9 @@ class RetirementModule(object):
             'retire_tab_2': Region(30, 816, 94, 94),
             'menu_nav_back': Region(54, 57, 67, 67),
             'sort_filters_button': Region(1655, 14, 130, 51),
-            'all_ship_filter': Region(435, 724, 190, 45),
-            'common_ship_filter': Region(671, 724, 190, 45),
-            'rare_ship_filter': Region(907, 724, 190, 45),
+            'all_ship_filter': Region(435, 660, 190, 45),
+            'common_ship_filter': Region(671, 660, 190, 45),
+            'rare_ship_filter': Region(907, 660, 190, 45),
             'confirm_filter_button': Region(1090, 969, 220, 60),
             #Region(209 + (i * 248), 238, 70, 72)
             'select_ship_0': Region(209, 238, 70, 72),
