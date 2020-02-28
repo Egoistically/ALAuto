@@ -142,7 +142,7 @@ class Utils(object):
         
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
-        cv2.rectangle(roi, (410, 636), (1835, 726), color=(255,255,255), thickness=-1)
+        cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
         
         # preparing the ends of the interval of blue colors allowed, BGR format
         lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
