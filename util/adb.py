@@ -5,13 +5,15 @@ class Adb(object):
 
     legacy = False
     service = ''
-    device = ''
+    transID = ''
+    tcp = False
 
     def init(self):
         """Kills and starts a new ADB server
         """
         self.kill_server()
-        return self.start_server()
+        return self.start_server() 
+
 
     def enable_legacy(self):
         """Method to enable legacy adb usage.
@@ -28,20 +30,32 @@ class Adb(object):
         """
         cmd = ['adb', 'start-server']
         subprocess.call(cmd)
-        #checking the emulator state
-        cmd = ['adb', self.device, 'get-state']
-        process = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        #processing only the std_out data, if there is an error it will be sent to std_err,
-        #so if the get-state fails ('error: no emulators found') => state=''
-        state = process.communicate()[0].decode()
-        if state.find('device') == -1:
-            #the emulator is not attached, trying to connect using service info
-            cmd = ['adb', 'connect', self.service]
-            process = subprocess.Popen(cmd, stdout = subprocess.PIPE)
-            std_out = process.communicate()[0].decode()
-            return std_out.find('connected') == 0
+        """ hooking onto here, previous implementation of get-state
+         is pointless since the script kills the ADB server in advance,
+         now seperately connect via usb or tcp, tcp variable is set by main script"""
+        if self.tcp:
+            return self.connect_tcp()
         else:
+            return self.connect_usb()
+
+    def connect_tcp(self):
+        cmd = ['adb', 'connect', self.service]
+        response = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
+        if (response.find('connected') == 0) or (response.find('already') == 0):
+            self.assign_serial()
             return True
+        return False
+
+    def connect_usb(self):
+        self.assign_serial()
+        if self.transID:
+            cmd = ['adb', '-t', self.transID, 'wait-for-device']
+            Logger.log_msg('Waiting for device [' + self.service + '] to be authorized...')
+            subprocess.call(cmd)
+            Logger.log_msg('Device [' + self.service + '] authorized and connected.')
+            return True
+        return False
+
 
     @staticmethod
     def kill_server():
@@ -60,7 +74,7 @@ class Adb(object):
         Returns:
             tuple: A tuple containing stdoutdata and stderrdata
         """
-        cmd = ['adb', Adb.device, 'exec-out'] + args.split(' ')
+        cmd = ['adb', '-t', Adb.transID , 'exec-out'] + args.split(' ')
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE)
         return process.communicate()[0]
 
@@ -71,6 +85,25 @@ class Adb(object):
         Args:
             args (string): Command to execute.
         """
-        cmd = ['adb', Adb.device, 'shell'] + args.split(' ')
+        cmd = ['adb', '-t', Adb.transID ,'shell'] + args.split(' ')
         Logger.log_debug(str(cmd))
         subprocess.call(cmd)
+
+    @classmethod
+    def assign_serial(cls):
+        cmd = ['adb', 'devices', '-l']
+        response = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').splitlines()
+        cls.sanitize_device_info(response)
+        cls.transID = cls.get_serial_trans(cls.service, response)
+
+    @staticmethod
+    def sanitize_device_info(string_list):
+        for index in range(len(string_list) - 1, -1, -1):
+            if 'transport_id:' not in string_list[index]:
+                string_list.pop(index)
+
+    @staticmethod
+    def get_serial_trans(device, string_list):
+        for index in range(len(string_list)):
+            if device in string_list[index]:
+                return string_list[index][string_list[index].index('transport_id:') + 13:]

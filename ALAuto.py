@@ -183,7 +183,7 @@ script = ALAuto(config)
 script.run_update_check()
 
 Adb.service = config.network['service']
-Adb.device = '-d' if (Adb.service == 'PHONE') else '-e'
+Adb.tcp = False if (Adb.service.find(':') == -1) else True
 adb = Adb()
 
 if adb.init():
