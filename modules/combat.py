@@ -21,7 +21,8 @@ class CombatModule(object):
         Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
         self.combats_done = 0
-        self.l = []
+        self.enemies_list = []
+        self.mystery_nodes_list = []
         self.blacklist = []
         self.movement_event = {}
 
@@ -89,7 +90,8 @@ class CombatModule(object):
         self.exit = 0
         self.combats_done = 0
         self.kills_count = 0
-        self.l.clear()
+        self.enemies_list.clear()
+        self.mystery_nodes_list.clear()
         self.blacklist.clear()
         self.swipe_counter = 0
 
@@ -517,7 +519,8 @@ class CombatModule(object):
     def clear_boss(self, boss_info):
         Logger.log_debug("Started boss function.")
 
-        self.l.clear()
+        self.enemies_list.clear()
+        self.mystery_nodes_list.clear()
         self.blacklist.clear()
 
         while True:
@@ -540,12 +543,13 @@ class CombatModule(object):
 
     def get_enemies(self, blacklist=[], boss=False):
         sim = 0.99
+        filter_coordinates = True if len(self.enemies_list) == 0 else False
         if blacklist:
             Logger.log_info('Blacklist: ' + str(blacklist))
             if len(blacklist) > 2:
-                self.l.clear()
+                self.enemies_list.clear()
 
-        while not self.l:
+        while not self.enemies_list:
             if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.97:
                 if self.swipe_counter > 3: self.swipe_counter = 0
                 swipes = {
@@ -582,14 +586,36 @@ class CombatModule(object):
                 l7 = Utils.find_siren_elites()
                 l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
                 Logger.log_debug("L7: " +str(l7))
-                self.l = l1 + l2 + l3 + l4 + l5 + l6 + l7
+                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6 + l7
             else:
-                self.l = l1 + l2 + l3 + l4 + l5 + l6
+                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6
 			
             sim -= 0.005
 
-        self.l = Utils.filter_similar_coords(self.l)
-        return self.l
+        if filter_coordinates:
+            self.enemies_list = Utils.filter_similar_coords(self.enemies_list)
+        return self.enemies_list
+
+    def get_mystery_nodes(self, blacklist=[], boss=False):
+        """Method which returns a list of mystery nodes' coordinates.
+        """
+        filter_coordinates = True if len(self.mystery_nodes_list) == 0 else False
+        if len(blacklist) > 2:
+            self.mystery_nodes_list.clear()
+        sim = 0.9
+
+        while not self.mystery_nodes_list and sim > 0.8:
+            Utils.update_screen()
+
+            l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+            l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
+
+            self.mystery_nodes_list = l1
+            sim -= 0.005
+        
+        if filter_coordinates:
+            self.mystery_nodes_list = Utils.filter_similar_coords(self.mystery_nodes_list)
+        return self.mystery_nodes_list
 
     def filter_blacklist(self, coord, blacklist):
         for y in blacklist:
@@ -660,21 +686,7 @@ class CombatModule(object):
             enemies = self.get_enemies(blacklist, boss)
 
             if mystery_node:
-                sim = 0.9
-
-                while mystery_nodes == []:
-                    Utils.update_screen()
-
-                    l1 = filter(lambda x:x[1] > 80 and x[1] < 938 and x[0] > 180 and x[0] < 1790, map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
-                    l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-
-                    mystery_nodes = l1
-                    sim -= 0.005
-
-                    if sim < 0.8:
-                        break
-
-                mystery_nodes = Utils.filter_similar_coords(mystery_nodes)
+                mystery_nodes = self.get_mystery_nodes(blacklist, boss)
 
             targets = enemies + mystery_nodes
             closest = targets[Utils.find_closest(targets, location)[1]]
@@ -683,14 +695,16 @@ class CombatModule(object):
             Logger.log_info('Enemies found at: {}'.format(targets))
             Logger.log_info('Closest enemy is at {}'.format(closest))
 
-            if closest in self.l:
-                x = self.l.index(closest)
-                del self.l[x]
-
-            if mystery_node and closest in mystery_nodes:
-                return [closest[0], closest[1], "mystery_node"]
+            if closest in self.enemies_list:
+                x = self.enemies_list.index(closest)
+                del self.enemies_list[x]
+                target_type = "enemy"
             else:
-                return [closest[0], closest[1], "enemy"]
+                x = self.mystery_nodes_list.index(closest)
+                del self.mystery_nodes_list[x]
+                target_type = "mystery_node"
+
+            return [closest[0], closest[1], target_type]
 
     def check_movement_threads(self):
         thread_check_button_evade = Thread(
