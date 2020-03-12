@@ -15,8 +15,8 @@ Tested on Windows 10 with BlueStacks and Nox, [don't use Nox though](https://www
 1. Clone or download this repository.
 2. Install the required packages via `pip3` with the command `pip3 install -r requirements.txt`.
 3. Enable adb debugging on your emulator, on Nox you might also need to enable root.
-4. Change config.ini's IP:PORT to 127.0.0.1 and your emulator's adb port, then change the rest to your likings. If you are using your own phone/device for the bot, enable debbuging on your device and change IP:PORT to PHONE.
-5. Run `ALAuto` using the command `python ALAuto.py`.
+4. Change config.ini's IP:PORT to 127.0.0.1 and your emulator's adb port, then change the rest to your likings. If you are using your own phone/device for the bot, enable debbuging on your device and change IP:PORT to your device's name (obtainable through this adb command `adb devices -l`).
+5. Run `ALAuto` using the command `python ALAuto.py` from the bot main directory.
 
 Check the [Wiki](https://github.com/Egoistically/ALAuto/wiki/Config.ini-and-Modules-explanation) for more information. It's my first time making one, don't mind me.  
 

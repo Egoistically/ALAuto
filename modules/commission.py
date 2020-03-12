@@ -16,6 +16,8 @@ class CommissionModule(object):
         self.enabled = True
         self.config = config
         self.stats = stats
+        self.attempts_count = 0
+        self.commission_start_attempts = 0
         self.region = {
             'left_menu': Region(0, 203, 57, 86),
             'collect_oil': Region(206, 105, 98, 58),
@@ -45,6 +47,8 @@ class CommissionModule(object):
         Utils.touch_randomly(self.region["collect_oil"])
         Utils.touch_randomly(self.region["collect_gold"])
 
+        self.attempts_count = 0
+
         while True:
             Utils.update_screen()
 
@@ -53,7 +57,13 @@ class CommissionModule(object):
                 self.completed_handler()
             if Utils.find("commission/alert_available", 0.9) and (lambda x:x > 332 and x < 511)(Utils.find("commission/alert_available", 0.9).y):
                 Logger.log_debug("Found commission available indicator.")
+                if self.attempts_count > 2:
+                    Logger.log_msg("Exceeded number of tries allowed. Resuming with other tasks.")
+                    Utils.touch_randomly(self.region["dismiss_side_tab"])
+                    break
                 Utils.touch_randomly(self.region["button_go"])
+                self.attempts_count += 1
+                self.commission_start_attempts = 0
                 Utils.wait_update_screen(1)
 
                 while not Utils.find("menu/commission"):
@@ -101,7 +111,10 @@ class CommissionModule(object):
             Utils.swipe(960, 680, 960, 400, 300)
             Utils.touch_randomly(self.region["last_commission"])
             if not self.start_commission():
-                Logger.log_msg("No more commissions to start.")
+                if self.commission_start_attempts > 10:
+                    Logger.log_warning("Going back to main menu and retrying.")
+                else:
+                    Logger.log_msg("No more commissions to start.")
                 return
 
     def urgent_handler(self):
@@ -113,7 +126,10 @@ class CommissionModule(object):
             if Utils.find_and_touch("commission/commission_status"):
                 Logger.log_msg("Found status indicator on urgent commission.")
                 if not self.start_commission():
-                    Logger.log_msg("No more commissions to start.")
+                    if self.commission_start_attempts > 10:
+                        Logger.log_warning("Going back to main menu and retrying.")
+                    else:
+                        Logger.log_msg("No more commissions to start.")
                     return False
             else:
                 Utils.touch_randomly(self.region["daily_tab"])
@@ -130,6 +146,10 @@ class CommissionModule(object):
         while True:
             Utils.update_screen()
 
+            if self.commission_start_attempts > 10:
+                Logger.log_warning("Failed to start commission.")
+                Utils.touch_randomly(self.region["dismiss_message"])
+                break
             if Utils.find("commission/alert_begun"):
                 Logger.log_msg("Successfully started commission.")
                 Utils.touch_randomly(self.region["dismiss_message"])
@@ -148,7 +168,8 @@ class CommissionModule(object):
                 Logger.log_debug("Found commission recommend button.")
                 Utils.touch_randomly(self.region["commission_recommend"])
                 tapped_recommend = True
+                self.commission_start_attempts += 1
                 continue
 
         Utils.wait_update_screen(1)
-        return not Utils.find("commission/commissions_full")
+        return not (Utils.find("commission/commissions_full") or self.commission_start_attempts > 10)
