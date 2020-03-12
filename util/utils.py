@@ -176,6 +176,19 @@ class Utils(object):
 
         return regions
 
+    @classmethod
+    def show_on_screen(cls, coordinates):
+        """ Shows the position of the received coordinates on a screenshot
+            through green dots. It pauses the script. Useful for debugging.
+        """
+        color_screen = cls.get_color_screen()
+        for coords in coordinates:
+            cv2.circle(color_screen, tuple(coords), 5, (0, 255, 0), -1)
+        cv2.imshow("targets", color_screen)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return        
+
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
         """ Method to ocr numbers.
