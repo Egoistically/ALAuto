@@ -339,7 +339,7 @@ class CombatModule(object):
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
                     self.blacklist.append(location[0:2])
 
-                    location = self.get_closest_target(self.blacklist)
+                    location = self.get_closest_target(self.blacklist, mystery_node=(not self.config.combat["ignore_mystery_nodes"]))
                     count = 0
                 count += 1
 
@@ -428,6 +428,7 @@ class CombatModule(object):
             'E-B3': lambda: Utils.swipe(960, 540, 1000, 620, 300),
             'E-D3': lambda: Utils.swipe(960, 540, 1000, 620, 300),
             'E-SP5': lambda: Utils.swipe(350, 500, 960, 800, 300),
+            '7-2': lambda: Utils.swipe(960, 540, 1300, 600, 300),
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
             '12-4': lambda: Utils.swipe(960, 300, 960, 540, 300),
@@ -493,15 +494,13 @@ class CombatModule(object):
                 self.clear_boss(boss_info)
                 continue
             if target_info == None:
-                if Utils.find("combat/question_mark", 0.9):
-                    target_info = self.get_closest_target(self.blacklist, mystery_node=True)
-                else:
-                    target_info = self.get_closest_target(self.blacklist)
-                continue
+                target_info = self.get_closest_target(self.blacklist, mystery_node=(not self.config.combat["ignore_mystery_nodes"]))
             if target_info:
                 #tap at target's coordinates
                 Utils.touch(target_info[0:2])
                 Utils.update_screen()
+            else:
+                continue
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
                 self.blacklist.append(target_info[0:2])
@@ -599,23 +598,30 @@ class CombatModule(object):
     def get_mystery_nodes(self, blacklist=[], boss=False):
         """Method which returns a list of mystery nodes' coordinates.
         """
-        filter_coordinates = True if len(self.mystery_nodes_list) == 0 else False
         if len(blacklist) > 2:
             self.mystery_nodes_list.clear()
-        sim = 0.9
-
-        while not self.mystery_nodes_list and sim > 0.8:
-            Utils.update_screen()
-
-            l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
-            l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-
-            self.mystery_nodes_list = l1
-            sim -= 0.005
         
-        if filter_coordinates:
-            self.mystery_nodes_list = Utils.filter_similar_coords(self.mystery_nodes_list)
-        return self.mystery_nodes_list
+        if len(self.mystery_nodes_list) == 0 and not Utils.find('combat/question_mark', 0.9):
+            # if list is empty and a question mark is NOT found
+            return self.mystery_nodes_list
+        else:
+            # list has elements or list is empty but a question mark has been found
+            filter_coordinates = True if len(self.mystery_nodes_list) == 0 else False
+            sim = 0.95
+
+            while not self.mystery_nodes_list and sim > 0.93:
+                Utils.update_screen()
+
+                l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+                l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
+
+                self.mystery_nodes_list = l1
+                sim -= 0.005
+        
+            if filter_coordinates:
+                self.mystery_nodes_list = Utils.filter_similar_coords(self.mystery_nodes_list)
+            
+            return self.mystery_nodes_list
 
     def filter_blacklist(self, coord, blacklist):
         for y in blacklist:
@@ -675,36 +681,42 @@ class CombatModule(object):
             array: An array containing the x and y coordinates of the closest
             enemy to the specified location
         """
-        while True:
-            boss = True if location else False
-            fleet_location = self.get_fleet_location()
-            mystery_nodes = []
+        boss = True if location else False
+        fleet_location = self.get_fleet_location()
 
-            if location == []:
-                location = fleet_location
+        if location == []:
+           location = fleet_location
 
-            enemies = self.get_enemies(blacklist, boss)
-
-            if mystery_node:
-                mystery_nodes = self.get_mystery_nodes(blacklist, boss)
-
-            targets = enemies + mystery_nodes
-            closest = targets[Utils.find_closest(targets, location)[1]]
-
-            Logger.log_info('Current location is: {}'.format(fleet_location))
-            Logger.log_info('Enemies found at: {}'.format(targets))
-            Logger.log_info('Closest enemy is at {}'.format(closest))
-
-            if closest in self.enemies_list:
-                x = self.enemies_list.index(closest)
-                del self.enemies_list[x]
-                target_type = "enemy"
+        if mystery_node and self.chapter_map[0].isdigit():
+            mystery_nodes = self.get_mystery_nodes(blacklist, boss)
+            if self.config.combat['focus_on_mystery_nodes'] and len(mystery_nodes) > 0:
+                # giving mystery nodes top priority and ignoring enemies
+                targets = mystery_nodes
+                Logger.log_info("Prioritizing mystery nodes.")
             else:
-                x = self.mystery_nodes_list.index(closest)
-                del self.mystery_nodes_list[x]
-                target_type = "mystery_node"
+                # mystery nodes are valid targets, same as enemies
+                enemies = self.get_enemies(blacklist, boss)
+                targets = enemies + mystery_nodes
+        else:
+            # target only enemy mobs
+            targets = self.get_enemies(blacklist, boss)
+            
+        closest = targets[Utils.find_closest(targets, location)[1]]
 
-            return [closest[0], closest[1], target_type]
+        Logger.log_info('Current location is: {}'.format(fleet_location))
+        Logger.log_info('Targets found at: {}'.format(targets))
+        Logger.log_info('Closest target is at {}'.format(closest))
+
+        if closest in self.enemies_list:
+            x = self.enemies_list.index(closest)
+            del self.enemies_list[x]
+            target_type = "enemy"
+        else:
+            x = self.mystery_nodes_list.index(closest)
+            del self.mystery_nodes_list[x]
+            target_type = "mystery_node"
+
+        return [closest[0], closest[1], target_type]
 
     def check_movement_threads(self):
         thread_check_button_evade = Thread(
