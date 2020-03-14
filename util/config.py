@@ -50,8 +50,10 @@ class Config(object):
             self._read_headquarters(config)
 
         self.commissions['enabled'] = config.getboolean('Modules', 'Commissions')
-        self.enhancement['enabled'] = config.getboolean('Modules', 'Enhancement')
         self.missions['enabled'] = config.getboolean('Modules', 'Missions')
+
+        if config.getboolean('Enhancement', 'Enabled'):
+            self._read_enhancement(config)
         
         if 'Retirement' in config:
             # New retirement settings
@@ -84,7 +86,7 @@ class Config(object):
                 self.changed = True
 
     def _read_updates(self, config):
-        """Method to parse the Combat settings of the passed in config.
+        """Method to parse the Updates settings of the passed in config.
         Args:
             config (ConfigParser): ConfigParser instance
         """
@@ -118,6 +120,14 @@ class Config(object):
         self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
         if self.academy['enabled']:
             self.academy['skill_book_tier'] = int(config.get('Headquarters', 'SkillBookTier'))
+
+    def _read_enhancement(self, config):
+        """Method to parse the Enhancement settings of the passed in config.
+        Args:
+            config (ConfigParser): ConfigParser instance
+        """
+        self.enhancement['enabled'] = True
+        self.enhancement['single_enhancement'] = config.getboolean('Enhancement', 'SingleEnhancement')
 
     def _read_event(self, config):
         """Method to parse the Event settings of the passed in config.

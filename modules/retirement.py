@@ -99,7 +99,7 @@ class RetirementModule(object):
             
             # check if correct options are enabled
             # get the regions of enabled options
-            options = Utils.get_enabled_retirement_filters()
+            options = Utils.get_enabled_ship_filters()
             if len(options) == 0:
                 # if the list is empty it probably means that there was an ui update
                 # pausing and requesting for user confirmation
