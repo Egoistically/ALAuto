@@ -132,8 +132,8 @@ class Utils(object):
         return color_screen
 
     @classmethod
-    def get_enabled_retirement_filters(cls):
-        """Method which returns the regions of all the options enabled in the retirement's sorting filter.
+    def get_enabled_ship_filters(cls, filter_category="rarity"):
+        """Method which returns the regions of all the options enabled for the current sorting filter.
 
         Returns:
             regions: a list containing the Region objects detected.
@@ -142,7 +142,10 @@ class Utils(object):
         
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
-        cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
+        if filter_category == "rarity":
+            cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
+        elif filter_category == "extra":
+            cv2.rectangle(roi, (410, 758), (1835, 847), color=(255,255,255), thickness=-1)
         
         # preparing the ends of the interval of blue colors allowed, BGR format
         lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
@@ -157,7 +160,8 @@ class Utils(object):
         # obtain countours, needed to calculate the rectangles' positions
         cnts = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = grab_contours(cnts)
-
+        # filter regions with a contour area inferior to 190x45=8550 (i.e. not a sorting option)
+        cnts = list(filter(lambda x: cv2.contourArea(x) > 8550, cnts))
         # loop over the contours and extract regions
         regions = []
         for c in cnts:
