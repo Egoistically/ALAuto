@@ -187,7 +187,7 @@ Adb.tcp = False if (Adb.service.find(':') == -1) else True
 adb = Adb()
 
 if adb.init():
-    Logger.log_msg('Successfully connected to the service.')
+    Logger.log_msg('Successfully connected to the service with transport_id({}).'.format(Adb.transID))
     output = Adb.exec_out('wm size').decode('utf-8').strip()
 
     if not re.search('1920x1080|1080x1920', output):
