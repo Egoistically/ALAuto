@@ -43,17 +43,25 @@ class Adb(object):
         response = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
         if (response.find('connected') == 0) or (response.find('already') == 0):
             self.assign_serial()
-            return True
+            if (self.transID is not None) and self.transID:
+                return True
+            Logger.log_error('Failure to assign transport_id.')  
+            Logger.log_error('Please try updating your ADB installation. Current ADB version:')
+            self.print_adb_version()
         return False
 
     def connect_usb(self):
         self.assign_serial()
-        if self.transID:
+        if (self.transID is not None) and self.transID:
             cmd = ['adb', '-t', self.transID, 'wait-for-device']
             Logger.log_msg('Waiting for device [' + self.service + '] to be authorized...')
             subprocess.call(cmd)
             Logger.log_msg('Device [' + self.service + '] authorized and connected.')
             return True
+        Logger.log_error('Failure to assign transport_id. Is your device connected? Or is "transport_id" not supported in current ADB version? ')
+        Logger.log_error('Try updating ADB if "transport_id:" does not exist in the info of your device when running "adb devices -l" in cmd.')
+        Logger.log_error('Current ADB version:')
+        self.print_adb_version()
         return False
 
 
@@ -94,6 +102,8 @@ class Adb(object):
         cmd = ['adb', 'devices', '-l']
         response = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').splitlines()
         cls.sanitize_device_info(response)
+        if not response:
+            Logger.log_error('adb devices -l yielded no lines with "transport_id:"')
         cls.transID = cls.get_serial_trans(cls.service, response)
 
     @staticmethod
@@ -107,3 +117,10 @@ class Adb(object):
         for index in range(len(string_list)):
             if device in string_list[index]:
                 return string_list[index][string_list[index].index('transport_id:') + 13:]
+
+    @staticmethod
+    def print_adb_version():
+        cmd = ['adb', '--version']
+        response = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').splitlines()
+        for version in response:
+            Logger.log_error(version)
