@@ -14,9 +14,12 @@ class EnhancementModule(object):
         self.config = config
         self.stats = stats
         self.sorted = False
+        self.called_from_menu = False
+        self.enhancement_done = False
         self.fill_count = 0
         self.last_enhance = 0
         self.region = {
+            'combat_enhance_button': Region(1150, 750, 215, 64),
             'button_favorite': Region(1014, 19, 170, 42),
             'button_go_back': Region(54, 57, 67, 67),
             'dock_tab': Region(297, 1015, 155, 40),
@@ -34,33 +37,54 @@ class EnhancementModule(object):
             'tap_to_continue': Region(661, 840, 598, 203)
         }
 
-    def enhancement_logic_wrapper(self):
+    def enhancement_logic_wrapper(self, forced=False):
         """Method that fires off the necessary child methods that encapsulates
-        the entire action of enhancing a ship
+        the entire action of enhancing a ship.
+
+        Args:
+            forced (bool): Forces enhancement to start even if need_to_enhance returns False.
+        
+        Returns:
+            enhancement_done (bool): whether at least one enhancement was completed.
         """
-        if self.need_to_enhance:
+        if self.need_to_enhance or forced:
             self.last_enhance = self.stats.combat_done
             self.fill_count = 0
+            self.called_from_menu = False
+            self.enhancement_done = False
             Logger.log_msg("Opening dock to enhance ship.")
 
             while True:
                 Utils.update_screen()
-
+                if Utils.find("menu/button_sort"):
+                    # Tap enhace button from dock is full alert
+                    Utils.touch_randomly(self.region['combat_enhance_button'])
+                    Utils.script_sleep(3)
+                    continue
                 if Utils.find("menu/button_battle"):
                     Utils.touch_randomly(self.region['dock_tab'])
+                    self.called_from_menu = True
                     Utils.script_sleep(2)
                     continue
                 if Utils.find("retirement/empty"):
                     Logger.log_msg("No ships left to enhance.")
-                    Utils.touch_randomly(self.region['button_go_back'])
-                    return
+                    Utils.touch_randomly(self.region['button_favorite'])
+                    Utils.script_sleep(0.5)
+                    if self.called_from_menu:
+                        Utils.menu_navigate("menu/button_battle")
+                    else:
+                        Utils.touch_randomly(self.region['button_go_back'])
+                    return self.enhancement_done
                 if Utils.find("enhancement/button_favorite", 0.99):
                     self.enhance_ship()
                     Utils.script_sleep(1)
                     Utils.touch_randomly(self.region['button_favorite'])
                     Utils.script_sleep(0.5)
-                    Utils.touch_randomly(self.region['button_go_back'])
-                    return
+                    if self.called_from_menu:
+                        Utils.menu_navigate("menu/button_battle")
+                    else:
+                        Utils.touch_randomly(self.region['button_go_back'])
+                    return self.enhancement_done
                 if Utils.find("menu/dock"):
                     Utils.touch_randomly(self.region['button_favorite'])
                     Utils.script_sleep(1)
@@ -156,6 +180,7 @@ class EnhancementModule(object):
             return
         else:
             Logger.log_debug("Successfully enhanced ship.")
+            self.enhancement_done = True
 
         while True:
             Utils.update_screen()
@@ -183,3 +208,5 @@ class EnhancementModule(object):
         # check if it has already retired with current combat count so it doesn't enter a loop
         if self.config.combat['enabled'] and self.stats.combat_done > self.last_enhance:
             return self.stats.combat_done % self.config.combat['retire_cycle'] == 0
+        else:
+            return False

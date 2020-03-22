@@ -15,9 +15,10 @@ class RetirementModule(object):
         self.stats = stats
         self.sorted = False
         self.called_from_menu = False
+        self.retirement_done = False
         self.last_retire = 0
         self.region = {
-            'combat_sort_button': Region(549, 735, 215, 64),
+            'combat_sort_button': Region(550, 750, 215, 64),
             'build_menu': Region(1452, 1007, 198, 52),
             'retire_tab_1': Region(20, 661, 115, 99),
             # retire_tab_2 is used when there is wishing well
@@ -48,11 +49,15 @@ class RetirementModule(object):
         the entire action of filtering and retiring ships
 
         Args:
-            forced: Forces retirement to start even if need_to_retire returns False.
+            forced (bool): Forces retirement to start even if need_to_retire returns False.
+
+        Returns:
+            retirement_done (bool): whether at least one retirement was completed.
         """
         if self.need_to_retire or forced:
             self.last_retire = self.stats.combat_done
             self.called_from_menu = False
+            self.retirement_done = False
             Logger.log_msg("Opening build menu to retire ships.")
 
             while True:
@@ -83,7 +88,7 @@ class RetirementModule(object):
                         Utils.menu_navigate("menu/button_battle")
                     else:
                         Utils.touch_randomly(self.region['menu_nav_back'])
-                    return
+                    return self.retirement_done
 
             Utils.update_screen()
 
@@ -135,13 +140,14 @@ class RetirementModule(object):
 
             if Utils.find("retirement/empty"):
                 Logger.log_msg("No ships left to retire.")
-                Utils.touch_randomly(self.region['menu_nav_back'])
+                #Utils.touch_randomly(self.region['menu_nav_back'])
                 return
             if Utils.find("retirement/selected_none"):
                 self.select_ships()
                 continue
             if Utils.find("retirement/bonus"):
                 self.handle_retirement()
+                self.retirement_done = True
                 continue
 
     def select_ships(self):
@@ -187,3 +193,5 @@ class RetirementModule(object):
         # check if it has already retired with current combat count so it doesn't enter a loop
         if self.config.combat['enabled'] and self.stats.combat_done > self.last_retire:
             return self.stats.combat_done % self.config.combat['retire_cycle'] == 0
+        else:
+            return False

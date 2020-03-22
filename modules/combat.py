@@ -8,16 +8,20 @@ from threading import Thread
 
 class CombatModule(object):
 
-    def __init__(self, config, stats):
+    def __init__(self, config, stats, retirement_module, enhancement_module):
         """Initializes the Combat module.
 
         Args:
             config (Config): ALAuto Config instance.
             stats (Stats): ALAuto Stats instance.
+            retirement_module (RetirementModule): ALAuto RetirementModule instance.
+            enhancement_module (EnhancementModule): ALAuto EnhancementModule instance.
         """
         self.enabled = True
         self.config = config
         self.stats = stats
+        self.retirement_module = retirement_module
+        self.enhancement_module = enhancement_module
         self.chapter_map = self.config.combat['map']
         Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
@@ -92,6 +96,9 @@ class CombatModule(object):
         """
         self.exit = 0
         self.start_time = datetime.now()
+        # enhancecement and retirement flags
+        enhancement_failed = False
+        retirement_failed = False
 
         # get to map
         map_region = self.reach_map()
@@ -138,9 +145,25 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
             if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 4
-                break
+                if self.config.enhancement['enabled'] and not enhancement_failed:
+                    if not self.enhancement_module.enhancement_logic_wrapper(forced=True):
+                        enhancement_failed = True
+                    Utils.script_sleep(1)
+                    Utils.touch_randomly(map_region)
+                    continue
+                elif self.config.retirement['enabled'] and not retirement_failed:
+                    if not self.retirement_module.retirement_logic_wrapper(forced=True):
+                        retirement_failed = True
+                    else:
+                        # reset enhancement flag
+                        enhancement_failed = False
+                    Utils.script_sleep(1)
+                    Utils.touch_randomly(map_region)
+                    continue
+                else:
+                    Utils.touch_randomly(self.region['close_info_dialog'])
+                    self.exit = 4
+                    break
             if Utils.find("combat/alert_morale_low"):
                 Utils.touch_randomly(self.region['close_info_dialog'])
                 self.exit = 3
@@ -234,10 +257,22 @@ class CombatModule(object):
     def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
 
+        # enhancecement and retirement flags
+        enhancement_failed = False
+        retirement_failed = False
         while not (Utils.find("combat/menu_loading", 0.8)):
             Utils.update_screen()
-
-            if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
+            if Utils.find("menu/button_sort"):
+                if self.config.enhancement['enabled'] and not enhancement_failed:
+                    if not self.enhancement_module.enhancement_logic_wrapper(forced=True):
+                        enhancement_failed = True
+                elif self.config.retirement['enabled'] and not retirement_failed:
+                    if not self.retirement_module.retirement_logic_wrapper(forced=True):
+                        retirement_failed = True
+                else:
+                    self.retreat_handler()
+                    return False
+            elif Utils.find("combat/alert_morale_low"):
                 self.retreat_handler()
                 return False
             elif Utils.find("combat/combat_pause", 0.7):

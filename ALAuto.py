@@ -42,9 +42,6 @@ class ALAuto(object):
         self.stats = Stats(config)
         if self.config.updates['enabled']:
             self.modules['updates'] = UpdateUtil(self.config)
-        if self.config.combat['enabled']:
-            self.modules['combat'] = CombatModule(self.config, self.stats)
-            self.oil_limit = self.config.combat['oil_limit']
         if self.config.commissions['enabled']:
             self.modules['commissions'] = CommissionModule(self.config, self.stats)
         if self.config.enhancement['enabled']:
@@ -55,6 +52,9 @@ class ALAuto(object):
             self.modules['retirement'] = RetirementModule(self.config, self.stats)
         if self.config.dorm['enabled'] or self.config.academy['enabled']:
             self.modules['headquarters'] = HeadquartersModule(self.config, self.stats)
+        if self.config.combat['enabled']:
+            self.modules['combat'] = CombatModule(self.config, self.stats, self.modules['retirement'], self.modules['enhancement'])
+            self.oil_limit = self.config.combat['oil_limit']
         if self.config.events['enabled']:
             self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
@@ -98,13 +98,9 @@ class ALAuto(object):
                 self.print_stats_check = False
             if result == 4:
                 # if dock is full
-                Logger.log_warning("Dock is full, need to retire.")
-
-                if self.modules['retirement']:
-                    self.modules['retirement'].retirement_logic_wrapper(True)
-                else:
-                    Logger.log_error("Retirement isn't enabled, exiting.")
-                    sys.exit()
+                Logger.log_warning("Dock is full, need to retire/enhance.")
+                Logger.log_error("Retirement and Enhancement aren't enabled or both failed to exectute their task, exiting.")
+                sys.exit()
             if result == 5:
                 Logger.log_warning("Failed to defeat enemy.")
                 self.print_stats_check = False
@@ -231,6 +227,8 @@ except KeyboardInterrupt:
     f.close()
     script.stats.print_stats(0)
     sys.exit(0)
+except SystemExit:
+    pass
 except:
     # registering whatever exception occurs during execution
     Logger.log_error("An error occurred. For more info check the traceback.log file.")
