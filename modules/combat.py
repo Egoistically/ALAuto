@@ -284,70 +284,111 @@ class CombatModule(object):
 
         Utils.script_sleep(4)
 
+        # flags
+        in_battle = True
+        items_received = False
+        locked_ship = False
+        confirmed_fight = False
+        defeat = False
+        confirmed_fleet_switch = False
         while True:
             Utils.update_screen()
 
-            if Utils.find("combat/alert_lock"):
-                Logger.log_msg("Locking received ship.")
-                Utils.touch_randomly(self.region['lock_ship_button'])
-                continue
-            if Utils.find("combat/combat_pause", 0.7):
+            if in_battle and Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
-                Utils.script_sleep(5)
+                Utils.script_sleep(2.5)
                 continue
-            if Utils.find("combat/menu_touch2continue"):
-                Utils.touch_randomly(self.region['tap_to_continue'])
-                continue
-            if Utils.find("menu/item_found"):
-                Utils.touch_randomly(self.region['tap_to_continue'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_ssr"):
-                Logger.log_msg("Received SSR ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_elite"):
-                Logger.log_msg("Received ELITE ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_rare"):
-                Logger.log_msg("Received new RARE ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_common"):
-                Logger.log_msg("Received new COMMON ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("combat/button_confirm"):
-                Logger.log_msg("Combat ended.")
-                self.kills_count += 1
-                Utils.touch_randomly(self.region["combat_end_confirm"])
-                Utils.script_sleep(1)
-                if boss:
-                    return True
-                Utils.update_screen()
-            if Utils.find("combat/alert_unable_battle"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                Utils.script_sleep(3)
-                self.exit = 5
-                return
-            if Utils.find("menu/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
-            if Utils.find("combat/button_retreat"):
-                Utils.script_sleep(3)
-                self.combats_done += 1
-                #Utils.touch_randomly(self.region["hide_strat_menu"])
-                return
-            if Utils.find("combat/commander"):
-                # prevents fleet with submarines from getting stuck at combat end screen
-                Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
-                continue
+            if not items_received:
+                if Utils.find("combat/menu_touch2continue"):
+                    Logger.log_debug("Combat ended: tap to continue")
+                    Utils.touch_randomly(self.region['tap_to_continue'])
+                    in_battle = False
+                    continue
+                if Utils.find("menu/item_found"):
+                    Logger.log_debug("Combat ended: items received screen")
+                    Utils.touch_randomly(self.region['tap_to_continue'])
+                    Utils.script_sleep(1)
+                    continue
+                if (not locked_ship) and Utils.find("combat/alert_lock"):
+                    Logger.log_msg("Locking received ship.")
+                    Utils.touch_randomly(self.region['lock_ship_button'])
+                    locked_ship = True
+                    continue
+                if Utils.find("menu/drop_elite"):
+                    Logger.log_msg("Received ELITE ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+                elif Utils.find("menu/drop_rare"):
+                    Logger.log_msg("Received new RARE ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue                
+                elif Utils.find("menu/drop_ssr"):
+                    Logger.log_msg("Received SSR ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+                elif Utils.find("menu/drop_common"):
+                    Logger.log_msg("Received new COMMON ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+            if not in_battle:
+                if (not confirmed_fight) and Utils.find("combat/button_confirm"):
+                    Logger.log_msg("Combat ended.")
+                    items_received = True
+                    confirmed_fight = True
+                    Utils.touch_randomly(self.region["combat_end_confirm"])
+                    if boss:
+                        return True
+                    Utils.wait_update_screen(3)
+                if (not confirmed_fight) and Utils.find("combat/commander"):
+                    items_received = True
+                    # prevents fleet with submarines from getting stuck at combat end screen
+                    Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
+                    continue
+                if defeat and not confirmed_fleet_switch:
+                    if Utils.find("combat/alert_unable_battle"):
+                        Utils.touch_randomly(self.region['close_info_dialog'])
+                        Utils.script_sleep(3)
+                        self.exit = 5
+                        return False
+                    if Utils.find("combat/alert_fleet_cannot_be_formed"):
+                        # fleet will be automatically switched
+                        Utils.touch_randomly(self.region['close_info_dialog'])
+                        confirmed_fleet_switch = True
+                        self.enemies_list.clear()
+                        self.mystery_nodes_list.clear()
+                        self.blacklist.clear()
+                        Utils.script_sleep(3)
+                        continue
+                    else:
+                        # flagship sunk, but part of backline still remains
+                        # proceed to retreat
+                        Utils.script_sleep(3)
+                        self.exit = 5
+                        return False
+                if confirmed_fight and Utils.find("menu/button_confirm"):
+                    Logger.log_msg("Found commission info message.")
+                    Utils.touch_randomly(self.region["combat_com_confirm"])
+                    continue
+                if confirmed_fight and Utils.find("combat/button_retreat"):
+                    #Utils.touch_randomly(self.region["hide_strat_menu"])
+                    if confirmed_fleet_switch:
+                        # if fleet was defeated and it has now been switched
+                        return False
+                    else:
+                        # fleet won the fight
+                        self.combats_done += 1
+                        self.kills_count += 1
+                        if self.kills_count >= self.kills_before_boss[self.chapter_map]:
+                            Utils.script_sleep(2.5)
+                        return True
+                if confirmed_fight and Utils.find_and_touch("combat/defeat_close_button"):
+                    Logger.log_debug("Fleet was defeated.")
+                    defeat = True
+                    Utils.script_sleep(3)
 
     def movement_handler(self, target_info):
         """
@@ -557,10 +598,15 @@ class CombatModule(object):
                         Utils.wait_update_screen(0.5)
                         boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
                         s += 1
-                    Utils.swipe(boss_region.x, boss_region.y, 960, 540, 300)
+                    # swipe to center the boss fleet on the screen
+                    # first calculate the translation vector coordinates
+                    horizontal_translation = 150 if boss_region.x < 960 else - 150
+                    angular_coefficient = -1 * ((540 - boss_region.y)/(960 - boss_region.x))
+                    Utils.swipe(boss_region.x + horizontal_translation, boss_region.y + int(horizontal_translation * angular_coefficient), 
+                        960 + horizontal_translation, 540 + int(horizontal_translation * angular_coefficient), 300)
                     Utils.wait_update_screen()
 
-                boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
+                boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
                 self.clear_boss(boss_info)
