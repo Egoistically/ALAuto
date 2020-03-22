@@ -242,7 +242,7 @@ class Utils(object):
         if limit == 0:
             return True
 
-        cls.menu_navigate("menu/button_battle")
+        #cls.menu_navigate("menu/button_battle")
 
         while len(oil) < 5:
             _res = int(cls.read_numbers(970, 38, 101, 36))

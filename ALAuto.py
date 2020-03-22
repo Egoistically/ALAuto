@@ -87,16 +87,16 @@ class ALAuto(object):
         if self.modules['combat']:
             result = self.modules['combat'].combat_logic_wrapper()
 
-            if result == 1:
-                # if boss is defeated
-                Logger.log_msg("Boss successfully defeated, going back to menu.")
+            if result == 1 or result == 2:
+                # if boss is defeated or the number of requested fights is achieved
+                Logger.log_msg("Completed combat cycle.")
                 self.print_stats_check = True
-            if result == 2:
+            if result == 3:
                 # if morale is too low
                 Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
                 self.next_combat = datetime.now() + timedelta(hours=1)
                 self.print_stats_check = False
-            if result == 3:
+            if result == 4:
                 # if dock is full
                 Logger.log_warning("Dock is full, need to retire.")
 
@@ -105,7 +105,7 @@ class ALAuto(object):
                 else:
                     Logger.log_error("Retirement isn't enabled, exiting.")
                     sys.exit()
-            if result == 4:
+            if result == 5:
                 Logger.log_warning("Failed to defeat enemy.")
                 self.print_stats_check = False
         else:

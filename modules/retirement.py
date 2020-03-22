@@ -14,6 +14,7 @@ class RetirementModule(object):
         self.config = config
         self.stats = stats
         self.sorted = False
+        self.called_from_menu = False
         self.last_retire = 0
         self.region = {
             'combat_sort_button': Region(549, 735, 215, 64),
@@ -51,6 +52,7 @@ class RetirementModule(object):
         """
         if self.need_to_retire or forced:
             self.last_retire = self.stats.combat_done
+            self.called_from_menu = False
             Logger.log_msg("Opening build menu to retire ships.")
 
             while True:
@@ -63,6 +65,7 @@ class RetirementModule(object):
                     continue
                 # In case function is called from menu
                 if Utils.find("menu/button_battle"):
+                    self.called_from_menu = True
                     Utils.touch_randomly(self.region['build_menu'])
                     Utils.script_sleep(1)
                     continue
@@ -76,7 +79,10 @@ class RetirementModule(object):
                 if Utils.find("retirement/selected_none"):
                     self.set_sort()
                     self.retire_ships()
-                    Utils.touch_randomly(self.region['menu_nav_back'])
+                    if self.called_from_menu:
+                        Utils.menu_navigate("menu/button_battle")
+                    else:
+                        Utils.touch_randomly(self.region['menu_nav_back'])
                     return
 
             Utils.update_screen()
