@@ -16,6 +16,7 @@ class RetirementModule(object):
         self.sorted = False
         self.called_from_menu = False
         self.retirement_done = False
+        self.previous_call_place = "combat"
         self.last_retire = 0
         self.region = {
             'combat_sort_button': Region(550, 750, 215, 64),
@@ -25,9 +26,10 @@ class RetirementModule(object):
             'retire_tab_2': Region(30, 816, 94, 94),
             'menu_nav_back': Region(54, 57, 67, 67),
             'sort_filters_button': Region(1655, 14, 130, 51),
-            'all_ship_filter': Region(435, 668, 190, 45),
+            'rarity_all_ship_filter': Region(435, 668, 190, 45),
             'common_ship_filter': Region(671, 668, 190, 45),
             'rare_ship_filter': Region(907, 668, 190, 45),
+            'extra_all_ship_filter': Region(435, 779, 190, 45),
             'confirm_filter_button': Region(1090, 933, 220, 60),
             #Region(209 + (i * 248), 238, 70, 72)
             'select_ship_0': Region(209, 238, 70, 72),
@@ -85,21 +87,35 @@ class RetirementModule(object):
                     self.set_sort()
                     self.retire_ships()
                     if self.called_from_menu:
+                        self.previous_call_place = "menu"
                         Utils.menu_navigate("menu/button_battle")
                     else:
+                        self.previous_call_place = "combat"
                         Utils.touch_randomly(self.region['menu_nav_back'])
                     return self.retirement_done
 
             Utils.update_screen()
 
     def set_sort(self):
+        """Method which sets the correct filters for retirement.
+        """
+        if self.config.enhancement['enabled'] and (self.previous_call_place == "combat" or not self.called_from_menu):
+            # Reset self.sorted if the request to retire came from combat
+            # this time or the previous time. The check is necessary because
+            # the filters for enhancement and retirement in combat are shared.
+            # If the alert "dock is full" is encountered, the retirement 
+            # module is called only if the enhancement module fails
+            # (e.g. no common ships unlocked in dock).
+            self.sorted = False
         Logger.log_debug("Retirement: " + repr(self.config.retirement))
         while not self.sorted:
             Logger.log_debug("Retirement: Opening sorting menu.")
             Utils.touch_randomly(self.region['sort_filters_button'])
             Utils.script_sleep(0.5)
             # Touch the All button to clear any current filter
-            Utils.touch_randomly(self.region['all_ship_filter'])
+            Utils.touch_randomly(self.region['rarity_all_ship_filter'])
+            Utils.script_sleep(0.5)
+            Utils.touch_randomly(self.region['extra_all_ship_filter'])
             Utils.script_sleep(0.5)
             if self.config.retirement['commons']:
                 Utils.touch_randomly(self.region['common_ship_filter'])
@@ -110,7 +126,7 @@ class RetirementModule(object):
             
             # check if correct options are enabled
             # get the regions of enabled options
-            options = Utils.get_enabled_ship_filters()
+            options = Utils.get_enabled_ship_filters(filter_categories="rarity;extra")
             if len(options) == 0:
                 # if the list is empty it probably means that there was an ui update
                 # pausing and requesting for user confirmation
@@ -118,8 +134,8 @@ class RetirementModule(object):
                 input("Manually fix sorting options. Press Enter to continue...")
                 self.sorted = True
             else:
-                retirements = (self.config.retirement['commons'], self.config.retirement['rares'])
-                checks = [False, False]
+                retirements = (self.config.retirement['commons'], self.config.retirement['rares'], True)
+                checks = [False, False, False]
                 for option in options:
                     # tolerance is set to 25 since the regions chosen for tapping are smaller than the actual ones
                     if self.config.retirement['commons'] and self.region['common_ship_filter'].equal_approximated(option, 25):
@@ -128,7 +144,10 @@ class RetirementModule(object):
                     if self.config.retirement['rares'] and self.region['rare_ship_filter'].equal_approximated(option, 25):
                         Logger.log_debug("Retirement: Sorting rares")
                         checks[1] = True
-                if retirements == tuple(checks) and len(options) <= 2:
+                    if self.region['extra_all_ship_filter'].equal_approximated(option, 25):
+                        Logger.log_debug("Retirement: Extra All option enabled")
+                        checks[2] = True
+                if retirements == tuple(checks) and len(options) <= 3:
                     Logger.log_debug("Retirement: Sorting options confirmed")
                     self.sorted = True
             Utils.touch_randomly(self.region['confirm_filter_button'])

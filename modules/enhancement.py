@@ -16,6 +16,7 @@ class EnhancementModule(object):
         self.sorted = False
         self.called_from_menu = False
         self.enhancement_done = False
+        self.previous_call_place = "combat"
         self.fill_count = 0
         self.last_enhance = 0
         self.region = {
@@ -24,6 +25,7 @@ class EnhancementModule(object):
             'button_go_back': Region(54, 57, 67, 67),
             'dock_tab': Region(297, 1015, 155, 40),
             'sort_filters_button': Region(1655, 14, 130, 51),
+            'rarity_all_ship_filter': Region(435, 668, 190, 45),
             'extra_all_ship_filter': Region(435, 779, 190, 45),
             'extra_enhanceable_ship_filter': Region(1143, 779, 190, 45),
             'confirm_filter_button': Region(1090, 933, 220, 60),
@@ -81,8 +83,10 @@ class EnhancementModule(object):
                     Utils.touch_randomly(self.region['button_favorite'])
                     Utils.script_sleep(0.5)
                     if self.called_from_menu:
+                        self.previous_call_place = "menu"
                         Utils.menu_navigate("menu/button_battle")
                     else:
+                        self.previous_call_place = "combat"
                         Utils.touch_randomly(self.region['button_go_back'])
                     return self.enhancement_done
                 if Utils.find("menu/dock"):
@@ -97,11 +101,21 @@ class EnhancementModule(object):
     def set_sort(self):
         """Method which sets the correct filters for enhancement, i.e. 'Enhanceable' option.
         """
+        if self.config.retirement['enabled'] and (self.previous_call_place == "combat" or not self.called_from_menu):
+            # Reset self.sorted if the request to enhance came from combat
+            # this time or the previous time. The check is necessary because
+            # the filters for enhancement and retirement in combat are shared.
+            # If the alert "dock is full" is encountered, the enhancement 
+            # module is called without doubts even if it ends up not enhancing
+            # (e.g. no common ships unlocked in dock).
+            self.sorted = False
         while not self.sorted:
             Logger.log_debug("Enhancement: Opening sorting menu.")
             Utils.touch_randomly(self.region['sort_filters_button'])
             Utils.script_sleep(0.5)
             # Touch the All button to clear any current filter
+            Utils.touch_randomly(self.region['rarity_all_ship_filter'])
+            Utils.script_sleep(0.5)
             Utils.touch_randomly(self.region['extra_all_ship_filter'])
             Utils.script_sleep(0.5)
             # Touch the Enhanceable button
@@ -110,16 +124,26 @@ class EnhancementModule(object):
             
             # check if correct options are enabled
             # get the regions of enabled options
-            options = Utils.get_enabled_ship_filters(filter_category="extra")
-            if len(options) == 1 and self.region['extra_enhanceable_ship_filter'].equal_approximated(options[0], 25):
-                Logger.log_debug("Enhancement: Sorting options confirmed")
-                self.sorted = True
-            elif len(options) == 0:
+            options = Utils.get_enabled_ship_filters(filter_categories="rarity;extra")
+            if len(options) == 0:
                 # if the list is empty it probably means that there was an ui update
                 # pausing and requesting for user confirmation
                 Logger.log_error("No options detected. User's input required.")
                 input("Manually fix sorting options. Press Enter to continue...")
                 self.sorted = True
+            else:
+                checks = [False, False]
+                for option in options:
+                    # tolerance is set to 25 since the regions chosen for tapping are smaller than the actual ones
+                    if self.region['rarity_all_ship_filter'].equal_approximated(option, 25):
+                        Logger.log_debug("Enhancement: Rarity All option enabled")
+                        checks[0] = True
+                    if self.region['extra_enhanceable_ship_filter'].equal_approximated(option, 25):
+                        Logger.log_debug("Enhancement: Enhanceable option enabled")
+                        checks[1] = True
+                if checks[0] and checks[1]:
+                    Logger.log_debug("Enhancement: Sorting options confirmed")
+                    self.sorted = True
             Utils.touch_randomly(self.region['confirm_filter_button'])
             Utils.script_sleep(1)
 
