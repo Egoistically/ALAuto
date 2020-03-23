@@ -1,5 +1,6 @@
 import math
 import string
+from datetime import datetime, timedelta
 from util.logger import Logger
 from util.utils import Region, Utils
 from scipy import spatial
@@ -7,16 +8,20 @@ from threading import Thread
 
 class CombatModule(object):
 
-    def __init__(self, config, stats):
+    def __init__(self, config, stats, retirement_module, enhancement_module):
         """Initializes the Combat module.
 
         Args:
             config (Config): ALAuto Config instance.
             stats (Stats): ALAuto Stats instance.
+            retirement_module (RetirementModule): ALAuto RetirementModule instance.
+            enhancement_module (EnhancementModule): ALAuto EnhancementModule instance.
         """
         self.enabled = True
         self.config = config
         self.stats = stats
+        self.retirement_module = retirement_module
+        self.enhancement_module = enhancement_module
         self.chapter_map = self.config.combat['map']
         Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
@@ -85,35 +90,42 @@ class CombatModule(object):
         the entire action of sortieing combat fleets and resolving combat.
 
         Returns:
-            int: 1 if boss was defeated, 2 if morale is too low and 3 if dock is full.
+            int: 1 if boss was defeated, 2 if successfully retreated after the specified
+                number of fights, 3 if morale is too low, 4 if dock is full and unable to
+                free it and 5 if fleet was defeated.
         """
         self.exit = 0
-        self.combats_done = 0
-        self.kills_count = 0
-        self.enemies_list.clear()
-        self.mystery_nodes_list.clear()
-        self.blacklist.clear()
-        self.swipe_counter = 0
+        self.start_time = datetime.now()
+        # enhancecement and retirement flags
+        enhancement_failed = False
+        retirement_failed = False
+
+        # get to map
+        map_region = self.reach_map()
+        Utils.touch_randomly(map_region)
 
         while True:
             Utils.wait_update_screen()
 
-            if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 3
-            if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 2
+            if self.exit == 1 or self.exit == 2:
+                self.stats.increment_combat_done()
+                time_passed = datetime.now() - self.start_time
+                if self.stats.combat_done % self.config.combat['retire_cycle'] == 0 or ((self.config.commissions['enabled'] or \
+                    self.config.dorm['enabled'] or self.config.academy['enabled']) and time_passed.total_seconds() > 3600) or \
+                        not Utils.check_oil(self.config.combat['oil_limit']):
+                        break
+                else:
+                    self.exit = 0
+                    Logger.log_msg("Repeating map {}.".format(self.chapter_map))
+                    Utils.touch_randomly(map_region)
+                    continue                
+            if self.exit > 2:
+                self.stats.increment_combat_attempted()
                 break
-            if Utils.find("menu/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
-            if Utils.find("menu/button_battle"):
-                Logger.log_debug("Found menu battle button.")
-                Utils.touch_randomly(self.region["menu_button_battle"])
-                Utils.wait_update_screen(1)
-                continue
+            if Utils.find("combat/button_go"):
+                Logger.log_debug("Found map summary go button.")
+                Utils.touch_randomly(self.region["map_summary_go"])
+                Utils.wait_update_screen()
             if Utils.find("combat/menu_fleet") and (lambda x:x > 414 and x < 584)(Utils.find("combat/menu_fleet").y) and not self.config.combat['boss_fleet']:
                 if not self.chapter_map[0].isdigit() and string.ascii_uppercase.index(self.chapter_map[2:3]) < 1 or self.chapter_map[0].isdigit():
                     Logger.log_msg("Removing second fleet from fleet selection.")
@@ -121,34 +133,42 @@ class CombatModule(object):
             if Utils.find("combat/menu_select_fleet"):
                 Logger.log_debug("Found fleet select go button.")
                 Utils.touch_randomly(self.region["fleet_menu_go"])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("combat/button_go"):
-                Logger.log_debug("Found map summary go button.")
-                Utils.touch_randomly(self.region["map_summary_go"])
-                continue
+                Utils.wait_update_screen(2)
             if Utils.find("combat/button_retreat"):
                 Logger.log_debug("Found retreat button, starting clear function.")
                 if not self.clear_map():
                     self.stats.increment_combat_attempted()
                     break
-            if self.exit == 1 or self.exit == 5:
-                self.stats.increment_combat_done()
-                break
-            if self.exit > 1:
-                self.stats.increment_combat_attempted()
-                break
-            if Utils.find("menu/button_normal_mode") and self.chapter_map[0].isdigit():
-                Logger.log_debug("Disabling hard mode.")
-                Utils.touch_randomly(self.region['normal_mode_button'])
-                Utils.wait_update_screen(1)
-            if Utils.find_and_touch('maps/map_{}'.format(self.chapter_map), 0.99):
-                Logger.log_msg("Found specified map.")
+                Utils.wait_update_screen()
+            if Utils.find("menu/button_confirm"):
+                Logger.log_msg("Found commission info message.")
+                Utils.touch_randomly(self.region["combat_com_confirm"])
                 continue
-            else:
-                self.reach_map()
-                continue
-
+            if Utils.find("menu/button_sort"):
+                if self.config.enhancement['enabled'] and not enhancement_failed:
+                    if not self.enhancement_module.enhancement_logic_wrapper(forced=True):
+                        enhancement_failed = True
+                    Utils.script_sleep(1)
+                    Utils.touch_randomly(map_region)
+                    continue
+                elif self.config.retirement['enabled'] and not retirement_failed:
+                    if not self.retirement_module.retirement_logic_wrapper(forced=True):
+                        retirement_failed = True
+                    else:
+                        # reset enhancement flag
+                        enhancement_failed = False
+                    Utils.script_sleep(1)
+                    Utils.touch_randomly(map_region)
+                    continue
+                else:
+                    Utils.touch_randomly(self.region['close_info_dialog'])
+                    self.exit = 4
+                    break
+            if Utils.find("combat/alert_morale_low"):
+                Utils.touch_randomly(self.region['close_info_dialog'])
+                self.exit = 3
+                break
+            
         Utils.script_sleep(1)
         Utils.menu_navigate("menu/button_battle")
 
@@ -156,14 +176,26 @@ class CombatModule(object):
 
     def reach_map(self):
         """
-        Method to move to the world where the specified map is located.
-        Only works with worlds added to assets (from 1 to 8) and some event maps.
-        Also checks if hard mode is enabled.
-        """
-        _map = 0
+        Method which returns the map region for the stage set in the configuration file.
+        If the map isn't found, it navigates the map selection menu to get to the world where the specified map is located.
+        Only works with standard maps up to worlds 13 and some event maps.
+        Also checks if hard mode is enabled, and if it's legit to keep it so (event maps C and D).
+        If nothing is found even after menu navigation, it stops the bot workflow until the user moves to the right 
+        screen or the map asset is substituted with the right one.
 
+        Returns:
+            (Region): the map region of the selected stage.
+        """
+        Utils.wait_update_screen()
+        # get to map selection menu
+        if Utils.find("menu/button_battle"):
+            Logger.log_debug("Found menu battle button.")
+            Utils.touch_randomly(self.region["menu_button_battle"])
+            Utils.wait_update_screen(2)
+
+        # correct map mode 
         if not self.chapter_map[0].isdigit():
-            letter = self.chapter_map[2:3]
+            letter = self.chapter_map[2]
             event_maps = ['A', 'B', 'S', 'C', 'D']
 
             Utils.touch_randomly(self.region['event_button'])
@@ -174,37 +206,73 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
         else:
-            for x in range(1, 14):
-                if Utils.find("maps/map_{}-1".format(x), 0.99):
-                    _map = x
-                    break
-
-            if _map != 0:
-                taps = int(self.chapter_map.split("-")[0]) - _map
-                for x in range(0, abs(taps)):
-                    if taps >= 1:
-                        Utils.touch_randomly(self.region['map_nav_right'])
-                        Logger.log_debug("Swiping to the right")
-                        Utils.wait_update_screen()
-                    else:
-                        Utils.touch_randomly(self.region['map_nav_left'])
-                        Logger.log_debug("Swiping to the left")
-                        Utils.wait_update_screen()
-
-        if Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
-            Logger.log_msg("Successfully reached the world where map is located.")
-        else:
-            Logger.log_error("Cannot find the specified map, please move to the world where it's located.")
-            while not Utils.find('maps/map_{}'.format(self.chapter_map), 0.99):
+            if Utils.find("menu/button_normal_mode"):
+                Logger.log_debug("Disabling hard mode.")
+                Utils.touch_randomly(self.region['normal_mode_button'])
                 Utils.wait_update_screen(1)
+        
+        map_region = Utils.find('maps/map_{}'.format(self.chapter_map), 0.99)
+        if map_region != None:
+            Logger.log_msg("Found specified map.")
+            return map_region
+        else:
+            # navigate map selection menu
+            if not self.chapter_map[0].isdigit():
+                if (self.chapter_map[2] == 'A' or self.chapter_map[2] == 'C') and \
+                    (Utils.find('maps/map_E-B1', 0.99) or Utils.find('maps/map_E-D1', 0.99)):
+                    Utils.touch_randomly(self.region['map_nav_left'])
+                    Logger.log_debug("Swiping to the left")
+                else:
+                    Utils.touch_randomly(self.region['map_nav_right'])
+                    Logger.log_debug("Swiping to the right")
+            else:
+                _map = 0
+                for x in range(1, 14):
+                    if Utils.find("maps/map_{}-1".format(x), 0.99):
+                        _map = x
+                        break
+                if _map != 0:
+                    taps = int(self.chapter_map.split("-")[0]) - _map
+                    for x in range(0, abs(taps)):
+                        if taps >= 1:
+                            Utils.touch_randomly(self.region['map_nav_right'])
+                            Logger.log_debug("Swiping to the right")
+                            Utils.script_sleep()
+                        else:
+                            Utils.touch_randomly(self.region['map_nav_left'])
+                            Logger.log_debug("Swiping to the left")
+                            Utils.script_sleep()
+        
+        Utils.wait_update_screen()
+        map_region = Utils.find('maps/map_{}'.format(self.chapter_map), 0.99)
+        if map_region == None:
+            Logger.log_error("Cannot find the specified map, please move to the world where it's located.")
+        while map_region == None:
+            map_region = Utils.find('maps/map_{}'.format(self.chapter_map), 0.99)
+            Utils.wait_update_screen(1)
+
+        Logger.log_msg("Found specified map.")
+        return map_region
 
     def battle_handler(self, boss=False):
         Logger.log_msg("Starting combat.")
 
+        # enhancecement and retirement flags
+        enhancement_failed = False
+        retirement_failed = False
         while not (Utils.find("combat/menu_loading", 0.8)):
             Utils.update_screen()
-
-            if Utils.find("combat/alert_morale_low") or Utils.find("menu/button_sort"):
+            if Utils.find("menu/button_sort"):
+                if self.config.enhancement['enabled'] and not enhancement_failed:
+                    if not self.enhancement_module.enhancement_logic_wrapper(forced=True):
+                        enhancement_failed = True
+                elif self.config.retirement['enabled'] and not retirement_failed:
+                    if not self.retirement_module.retirement_logic_wrapper(forced=True):
+                        retirement_failed = True
+                else:
+                    self.retreat_handler()
+                    return False
+            elif Utils.find("combat/alert_morale_low"):
                 self.retreat_handler()
                 return False
             elif Utils.find("combat/combat_pause", 0.7):
@@ -216,70 +284,111 @@ class CombatModule(object):
 
         Utils.script_sleep(4)
 
+        # flags
+        in_battle = True
+        items_received = False
+        locked_ship = False
+        confirmed_fight = False
+        defeat = False
+        confirmed_fleet_switch = False
         while True:
             Utils.update_screen()
 
-            if Utils.find("combat/alert_lock"):
-                Logger.log_msg("Locking received ship.")
-                Utils.touch_randomly(self.region['lock_ship_button'])
-                continue
-            if Utils.find("combat/combat_pause", 0.7):
+            if in_battle and Utils.find("combat/combat_pause", 0.7):
                 Logger.log_debug("In battle.")
-                Utils.script_sleep(5)
+                Utils.script_sleep(2.5)
                 continue
-            if Utils.find("combat/menu_touch2continue"):
-                Utils.touch_randomly(self.region['tap_to_continue'])
-                continue
-            if Utils.find("menu/item_found"):
-                Utils.touch_randomly(self.region['tap_to_continue'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_ssr"):
-                Logger.log_msg("Received SSR ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_elite"):
-                Logger.log_msg("Received ELITE ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_rare"):
-                Logger.log_msg("Received new RARE ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("menu/drop_common"):
-                Logger.log_msg("Received new COMMON ship as drop.")
-                Utils.touch_randomly(self.region['dismiss_ship_drop'])
-                Utils.script_sleep(1)
-                continue
-            if Utils.find("combat/button_confirm"):
-                Logger.log_msg("Combat ended.")
-                self.kills_count += 1
-                Utils.touch_randomly(self.region["combat_end_confirm"])
-                Utils.script_sleep(1)
-                if boss:
-                    return True
-                Utils.update_screen()
-            if Utils.find("combat/alert_unable_battle"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                Utils.script_sleep(3)
-                self.exit = 4
-                return
-            if Utils.find("menu/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
-            if Utils.find("combat/button_retreat"):
-                Utils.script_sleep(3)
-                self.combats_done += 1
-                #Utils.touch_randomly(self.region["hide_strat_menu"])
-                return
-            if Utils.find("combat/commander"):
-                # prevents fleet with submarines from getting stuck at combat end screen
-                Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
-                continue
+            if not items_received:
+                if Utils.find("combat/menu_touch2continue"):
+                    Logger.log_debug("Combat ended: tap to continue")
+                    Utils.touch_randomly(self.region['tap_to_continue'])
+                    in_battle = False
+                    continue
+                if Utils.find("menu/item_found"):
+                    Logger.log_debug("Combat ended: items received screen")
+                    Utils.touch_randomly(self.region['tap_to_continue'])
+                    Utils.script_sleep(1)
+                    continue
+                if (not locked_ship) and Utils.find("combat/alert_lock"):
+                    Logger.log_msg("Locking received ship.")
+                    Utils.touch_randomly(self.region['lock_ship_button'])
+                    locked_ship = True
+                    continue
+                if Utils.find("menu/drop_elite"):
+                    Logger.log_msg("Received ELITE ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+                elif Utils.find("menu/drop_rare"):
+                    Logger.log_msg("Received new RARE ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue                
+                elif Utils.find("menu/drop_ssr"):
+                    Logger.log_msg("Received SSR ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+                elif Utils.find("menu/drop_common"):
+                    Logger.log_msg("Received new COMMON ship as drop.")
+                    Utils.touch_randomly(self.region['dismiss_ship_drop'])
+                    Utils.script_sleep(2)
+                    continue
+            if not in_battle:
+                if (not confirmed_fight) and Utils.find("combat/button_confirm"):
+                    Logger.log_msg("Combat ended.")
+                    items_received = True
+                    confirmed_fight = True
+                    Utils.touch_randomly(self.region["combat_end_confirm"])
+                    if boss:
+                        return True
+                    Utils.wait_update_screen(3)
+                if (not confirmed_fight) and Utils.find("combat/commander"):
+                    items_received = True
+                    # prevents fleet with submarines from getting stuck at combat end screen
+                    Utils.touch_randomly(self.region["combat_dismiss_surface_fleet_summary"])
+                    continue
+                if defeat and not confirmed_fleet_switch:
+                    if Utils.find("combat/alert_unable_battle"):
+                        Utils.touch_randomly(self.region['close_info_dialog'])
+                        Utils.script_sleep(3)
+                        self.exit = 5
+                        return False
+                    if Utils.find("combat/alert_fleet_cannot_be_formed"):
+                        # fleet will be automatically switched
+                        Utils.touch_randomly(self.region['close_info_dialog'])
+                        confirmed_fleet_switch = True
+                        self.enemies_list.clear()
+                        self.mystery_nodes_list.clear()
+                        self.blacklist.clear()
+                        Utils.script_sleep(3)
+                        continue
+                    else:
+                        # flagship sunk, but part of backline still remains
+                        # proceed to retreat
+                        Utils.script_sleep(3)
+                        self.exit = 5
+                        return False
+                if confirmed_fight and Utils.find("menu/button_confirm"):
+                    Logger.log_msg("Found commission info message.")
+                    Utils.touch_randomly(self.region["combat_com_confirm"])
+                    continue
+                if confirmed_fight and Utils.find("combat/button_retreat"):
+                    #Utils.touch_randomly(self.region["hide_strat_menu"])
+                    if confirmed_fleet_switch:
+                        # if fleet was defeated and it has now been switched
+                        return False
+                    else:
+                        # fleet won the fight
+                        self.combats_done += 1
+                        self.kills_count += 1
+                        if self.kills_count >= self.kills_before_boss[self.chapter_map]:
+                            Utils.script_sleep(2.5)
+                        return True
+                if confirmed_fight and Utils.find_and_touch("combat/defeat_close_button"):
+                    Logger.log_debug("Fleet was defeated.")
+                    defeat = True
+                    Utils.script_sleep(3)
 
     def movement_handler(self, target_info):
         """
@@ -390,11 +499,11 @@ class CombatModule(object):
 
             if Utils.find("combat/alert_morale_low"):
                 Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 2
+                self.exit = 3
                 continue
             if Utils.find("menu/button_sort"):
                 Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 3
+                self.exit = 4
                 continue
             if Utils.find("combat/menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
@@ -406,13 +515,19 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['dismiss_commission_dialog'])
                 continue
             if Utils.find("menu/attack"):
-                if self.exit != 1 and self.exit != 4 and self.exit != 5:
+                if self.exit != 1 and self.exit != 2 and self.exit != 5:
                     Logger.log_msg("Retreating...")
                 return
 
     def clear_map(self):
         """ Clears map.
         """
+        self.combats_done = 0
+        self.kills_count = 0
+        self.enemies_list.clear()
+        self.mystery_nodes_list.clear()
+        self.blacklist.clear()
+        self.swipe_counter = 0
         Logger.log_msg("Started map clear.")
         Utils.script_sleep(2.5)
 
@@ -453,10 +568,10 @@ class CombatModule(object):
 
             if Utils.find("combat/alert_unable_battle"):
                 Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 4
+                self.exit = 5
             if self.config.combat['retreat_after'] != 0 and self.combats_done >= self.config.combat['retreat_after']:
                 Logger.log_msg("Retreating after defeating {} enemies".format(self.config.combat['retreat_after']))
-                self.exit = 5
+                self.exit = 2
             if self.exit != 0:
                 self.retreat_handler()
                 return True
@@ -483,10 +598,15 @@ class CombatModule(object):
                         Utils.wait_update_screen(0.5)
                         boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
                         s += 1
-                    Utils.swipe(boss_region.x, boss_region.y, 960, 540, 300)
+                    # swipe to center the boss fleet on the screen
+                    # first calculate the translation vector coordinates
+                    horizontal_translation = 150 if boss_region.x < 960 else - 150
+                    angular_coefficient = -1 * ((540 - boss_region.y)/(960 - boss_region.x))
+                    Utils.swipe(boss_region.x + horizontal_translation, boss_region.y + int(horizontal_translation * angular_coefficient), 
+                        960 + horizontal_translation, 540 + int(horizontal_translation * angular_coefficient), 300)
                     Utils.wait_update_screen()
 
-                boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
+                boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
                 self.clear_boss(boss_info)
@@ -535,6 +655,7 @@ class CombatModule(object):
                 self.movement_handler(boss_info)
                 if self.battle_handler(boss=True):
                     self.exit = 1
+                    Logger.log_msg("Boss successfully defeated.")
                 Utils.script_sleep(3)
                 return
 

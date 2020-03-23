@@ -132,19 +132,23 @@ class Utils(object):
         return color_screen
 
     @classmethod
-    def get_enabled_ship_filters(cls, filter_category="rarity"):
+    def get_enabled_ship_filters(cls, filter_categories="rarity"):
         """Method which returns the regions of all the options enabled for the current sorting filter.
 
+        Args:
+            filter_categories (string): a string of ';' separated values, which states the filters' categories
+                to take into account for the detection.
         Returns:
-            regions: a list containing the Region objects detected.
+            regions (list): a list containing the Region objects detected.
         """
         image = cls.get_color_screen()
-        
+        categories = filter_categories.split(';')
+
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
-        if filter_category == "rarity":
+        if "rarity" in categories:
             cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
-        elif filter_category == "extra":
+        if "extra" in categories:
             cv2.rectangle(roi, (410, 758), (1835, 847), color=(255,255,255), thickness=-1)
         
         # preparing the ends of the interval of blue colors allowed, BGR format
@@ -242,7 +246,7 @@ class Utils(object):
         if limit == 0:
             return True
 
-        cls.menu_navigate("menu/button_battle")
+        #cls.menu_navigate("menu/button_battle")
 
         while len(oil) < 5:
             _res = int(cls.read_numbers(970, 38, 101, 36))
