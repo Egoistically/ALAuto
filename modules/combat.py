@@ -538,6 +538,8 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
+            'E-C2': lambda: Utils.swipe(960, 540, 960, 580, 300),
+            'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 100),
             'E-SP1': lambda: Utils.swipe(960, 540, 1400, 640, 300),
             'E-SP2': lambda: Utils.swipe(960, 540, 1500, 540, 300),
             'E-SP3': lambda: Utils.swipe(960, 540, 1300, 740, 300),
