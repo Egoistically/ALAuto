@@ -432,7 +432,7 @@ class Utils(object):
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
         
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170,50,50])
+        lower_red = numpy.array([170,100,100])
         upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 

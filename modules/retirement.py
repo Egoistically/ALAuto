@@ -39,7 +39,7 @@ class RetirementModule(object):
             'select_ship_4': Region(1201, 238, 70, 72),
             'select_ship_5': Region(1449, 238, 70, 72),
             'select_ship_6': Region(1697, 238, 70, 72),
-            'confirm_retire_button': Region(1510, 978, 216, 54),
+            'confirm_retire_button': Region(1725, 978, 80, 54),
             'confirm_selected_ships_button': Region(1412, 938, 218, 61),
             'tap_to_continue': Region(661, 840, 598, 203),
             'confirm_selected_equipment_button': Region(1320, 785, 232, 62),
