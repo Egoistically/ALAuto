@@ -107,6 +107,7 @@ class Config(object):
         self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
         self.combat['ignore_mystery_nodes'] = config.getboolean('Combat', 'IgnoreMysteryNodes')
         self.combat['focus_on_mystery_nodes'] = config.getboolean('Combat', 'FocusOnMysteryNodes')
+        self.combat['clearing_mode'] = config.getboolean('Combat', 'ClearingMode')
         self.combat['hide_subs_hunting_range'] = config.getboolean('Combat', 'HideSubsHuntingRange')
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')

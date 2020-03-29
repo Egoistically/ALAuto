@@ -411,29 +411,29 @@ class CombatModule(object):
             Utils.update_screen()
             event = self.check_movement_threads()
 
-            if event["combat/button_evade"]:
+            if (self.chapter_map[0].isdigit() and not self.config.combat['clearing_mode']) and event["combat/button_evade"]:
                 Logger.log_msg("Ambush was found, trying to evade.")
                 Utils.touch_randomly(self.region["combat_ambush_evade"])
                 Utils.script_sleep(0.5)
                 continue
-            if event["combat/alert_failed_evade"]:
+            if (self.chapter_map[0].isdigit() and not self.config.combat['clearing_mode']) and event["combat/alert_failed_evade"]:
                 Logger.log_warning("Failed to evade ambush.")
                 self.kills_count -= 1
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 self.battle_handler()
                 continue
-            if event["combat/alert_ammo_supplies"]:
+            if self.chapter_map[0].isdigit() and event["combat/alert_ammo_supplies"]:
                 Logger.log_msg("Received ammo supplies")
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
                     return 0
                 continue
-            if event["menu/item_found"]:
+            if self.chapter_map[0].isdigit() and event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(self.region['tap_to_continue'])
                 if Utils.find("combat/menu_emergency"):
                     Utils.script_sleep(1)
-                    #Utils.touch_randomly(self.region["hide_strat_menu"])
+                    Utils.touch_randomly(self.region["close_strategy_menu"])
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
                     return 0
@@ -853,26 +853,33 @@ class CombatModule(object):
         return [closest[0], closest[1], target_type]
 
     def check_movement_threads(self):
-        thread_check_button_evade = Thread(
-            target=self.check_movement_threads_func, args=("combat/button_evade",))
-        thread_check_failed_evade = Thread(
-            target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
-        thread_check_alert_ammo = Thread(
-            target=self.check_movement_threads_func, args=("combat/alert_ammo_supplies",))
+        thread_list = []
+        # essential threads
         thread_check_alert_info = Thread(
             target=self.check_movement_threads_func, args=("menu/alert_info",))
-        thread_check_item_found = Thread(
-            target=self.check_movement_threads_func, args=("menu/item_found",))
         thread_check_menu_formation = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
         thread_check_menu_loading = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_loading",))
+        thread_list.extend([thread_check_alert_info, thread_check_menu_formation, thread_check_menu_loading])
 
-        Utils.multithreader([
-            thread_check_button_evade, thread_check_failed_evade,
-            thread_check_alert_ammo, thread_check_alert_info, 
-            thread_check_item_found, thread_check_menu_formation, 
-            thread_check_menu_loading])
+        # threads needed for non-event maps (where mystery nodes appears)
+        if self.chapter_map[0].isdigit():
+            thread_check_alert_ammo = Thread(
+                target=self.check_movement_threads_func, args=("combat/alert_ammo_supplies",))
+            thread_check_item_found = Thread(
+                target=self.check_movement_threads_func, args=("menu/item_found",))
+            thread_list.extend([thread_check_alert_ammo, thread_check_item_found])
+
+            # threads needed for story maps without clearing mode enabled
+            if not self.config.combat['clearing_mode']:
+                thread_check_button_evade = Thread(
+                    target=self.check_movement_threads_func, args=("combat/button_evade",))
+                thread_check_failed_evade = Thread(
+                    target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+                thread_list.extend([thread_check_button_evade, thread_check_failed_evade])
+
+        Utils.multithreader(thread_list)
 
         return self.movement_event
 
