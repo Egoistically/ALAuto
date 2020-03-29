@@ -14,6 +14,8 @@ class RetirementModule(object):
         self.config = config
         self.stats = stats
         self.sorted = False
+        self.build_menu_sorted = False
+        self.combat_sorted = False
         self.called_from_menu = False
         self.retirement_done = False
         self.previous_call_place = "combat"
@@ -106,6 +108,24 @@ class RetirementModule(object):
             # If the alert "dock is full" is encountered, the retirement 
             # module is called only if the enhancement module fails
             # (e.g. no common ships unlocked in dock).
+            self.sorted = False
+        if not self.build_menu_sorted and self.called_from_menu:
+            # addressing case of only retirement module enabled and first place
+            # it's called from is combat: self.sorted is set to true, but the filters
+            # enabled when accessing from menu are separated from the ones in combat,
+            # so they are not set. self.build_menu_sorted flag ensures that
+            # the sorting procedure is done at least once when accessing to
+            # retirement from main menu.
+            self.build_menu_sorted = True
+            self.sorted = False
+        if not self.combat_sorted and not self.called_from_menu:
+            # addressing case of only retirement module enabled and first place
+            # it's called from is main menu: self.sorted is set to true, but the filters
+            # enabled when accessing from combat are separated from the ones in menu,
+            # so they are not set. self.combat_sorted flag ensures that
+            # the sorting procedure is done at least once when accessing to
+            # retirement from combat.
+            self.combat_sorted = True
             self.sorted = False
         Logger.log_debug("Retirement: " + repr(self.config.retirement))
         while not self.sorted:

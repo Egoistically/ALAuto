@@ -411,25 +411,33 @@ class CombatModule(object):
             Utils.update_screen()
             event = self.check_movement_threads()
 
-            if event["combat/button_evade"]:
+            if (self.chapter_map[0].isdigit() and not self.config.combat['clearing_mode']) and event["combat/button_evade"]:
                 Logger.log_msg("Ambush was found, trying to evade.")
                 Utils.touch_randomly(self.region["combat_ambush_evade"])
                 Utils.script_sleep(0.5)
                 continue
-            if event["combat/alert_failed_evade"]:
+            if (self.chapter_map[0].isdigit() and not self.config.combat['clearing_mode']) and event["combat/alert_failed_evade"]:
                 Logger.log_warning("Failed to evade ambush.")
                 self.kills_count -= 1
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 self.battle_handler()
                 continue
-            if event["menu/item_found"]:
+            if self.chapter_map[0].isdigit() and event["combat/alert_ammo_supplies"]:
+                Logger.log_msg("Received ammo supplies")
+                if target_info[2] == "mystery_node":
+                    Logger.log_msg("Target reached.")
+                    self.fleet_location = target_info[0:2]
+                    return 0
+                continue
+            if self.chapter_map[0].isdigit() and event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(self.region['tap_to_continue'])
                 if Utils.find("combat/menu_emergency"):
                     Utils.script_sleep(1)
-                    #Utils.touch_randomly(self.region["hide_strat_menu"])
+                    Utils.touch_randomly(self.region["close_strategy_menu"])
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
+                    self.fleet_location = target_info[0:2]
                     return 0
                 continue
             if event["menu/alert_info"]:
@@ -437,9 +445,11 @@ class CombatModule(object):
                 Utils.find_and_touch("menu/alert_close")
                 continue
             if event["combat/menu_loading"]:
+                self.fleet_location = target_info[0:2]
                 return 1
             elif event["combat/menu_formation"]:
                 Utils.find_and_touch("combat/auto_combat_off")
+                self.fleet_location = target_info[0:2]
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
@@ -447,29 +457,33 @@ class CombatModule(object):
                 if count > 21:
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
                     self.blacklist.append(location[0:2])
+                    self.fleet_location = None
 
                     location = self.get_closest_target(self.blacklist, mystery_node=(not self.config.combat["ignore_mystery_nodes"]))
                     count = 0
                 count += 1
 
-    def unable_handler(self, coords):
+    def unable_handler(self, coords, boss=False):
         """
-        Method called when the path to the boss fleet is obstructed by mobs: it procedes to switch targets to the mobs
-        which are blocking the path.
+        Method called when the path to the target (boss fleet or mystery node) is obstructed by mobs: 
+        it procedes to switch targets to the mobs which are blocking the path.
 
         Args:
-            coords (list): coordinate_x, coordinate_y. These coordinates describe the boss location.
+            coords (list): coordinate_x, coordinate_y. These coordinates describe the target's location.
         """
-        Logger.log_debug("Unable to reach boss function started.")
+        if boss:
+            Logger.log_debug("Unable to reach boss function started.")
+        else:
+            Logger.log_debug("Unable to reach selected target function started.")
         self.blacklist.clear()
-        closest_to_boss = self.get_closest_target(self.blacklist, coords)
+        closest_to_unreachable_target = self.get_closest_target(self.blacklist, coords, boss=boss)
 
-        Utils.touch(closest_to_boss)
-        Utils.wait_update_screen(1)
+        Utils.touch(closest_to_unreachable_target)
+        Utils.update_screen()
 
         if Utils.find("combat/alert_unable_reach"):
-            Logger.log_warning("Unable to reach next to boss.")
-            self.blacklist.append(closest_to_boss[0:2])
+            Logger.log_warning("Unable to reach next to selected target.")
+            self.blacklist.append(closest_to_unreachable_target[0:2])
 
             while True:
                 closest_enemy = self.get_closest_target(self.blacklist)
@@ -486,7 +500,7 @@ class CombatModule(object):
                 return False
             return True
         else:
-            self.movement_handler(closest_to_boss)
+            self.movement_handler(closest_to_unreachable_target)
             if not self.battle_handler():
                 return False
             return True
@@ -512,7 +526,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['retreat_button'])
                 continue
             if Utils.find("menu/button_confirm"):
-                Utils.touch_randomly(self.region['dismiss_commission_dialog'])
+                Utils.touch_randomly(self.region['combat_com_confirm'])
                 continue
             if Utils.find("menu/attack"):
                 if self.exit != 1 and self.exit != 2 and self.exit != 5:
@@ -522,6 +536,7 @@ class CombatModule(object):
     def clear_map(self):
         """ Clears map.
         """
+        self.fleet_location = None
         self.combats_done = 0
         self.kills_count = 0
         self.enemies_list.clear()
@@ -623,8 +638,12 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
-                self.blacklist.append(target_info[0:2])
-                target_info = None
+                if self.config.combat['focus_on_mystery_nodes'] and target_info[2] == "mystery_node":
+                    self.enemies_list.clear()
+                    self.unable_handler(target_info[0:2])
+                else:
+                    self.blacklist.append(target_info[0:2])
+                    target_info = None
                 continue
             else:
                 movement_result = self.movement_handler(target_info)
@@ -641,6 +660,7 @@ class CombatModule(object):
         self.enemies_list.clear()
         self.mystery_nodes_list.clear()
         self.blacklist.clear()
+        self.fleet_location = None
 
         while True:
             #tap at boss' coordinates
@@ -650,7 +670,7 @@ class CombatModule(object):
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_msg("Unable to reach boss.")
                 #handle boss' coordinates
-                if not self.unable_handler(boss_info[0:2]):
+                if not self.unable_handler(boss_info[0:2], boss=True):
                     return
                 continue
             else:
@@ -759,33 +779,35 @@ class CombatModule(object):
             array: An array containing the x and y coordinates of the fleet's
             current location.
         """
-        coords = [0, 0]
-        count = 0
+        if not self.fleet_location:
+            coords = [0, 0]
+            count = 0
 
-        while coords == [0, 0]:
-            Utils.update_screen()
-            count += 1
-
-            if count > 4:
-                Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
+            while coords == [0, 0]:
                 Utils.update_screen()
+                count += 1
 
-            if Utils.find('combat/fleet_ammo', 0.8):
-                coords = Utils.find('combat/fleet_ammo', 0.8)
-                coords = [coords.x + 140, coords.y + 225 - count * 20]
-            elif Utils.find('combat/fleet_arrow', 0.9):
-                coords = Utils.find('combat/fleet_arrow', 0.9)
-                coords = [coords.x + 25, coords.y + 320 - count * 20]
+                if count > 4:
+                    Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
+                    Utils.update_screen()
 
-            if count > 4:
-                Utils.swipe(960, 540 + 150 + count * 20, 960, 540, 100)
-            elif (math.isclose(coords[0], 160, abs_tol=30) & math.isclose(coords[1], 142, abs_tol=30)):
-                coords = [0, 0]
+                if Utils.find('combat/fleet_ammo', 0.8):
+                    coords = Utils.find('combat/fleet_ammo', 0.8)
+                    coords = [coords.x + 140, coords.y + 225 - count * 20]
+                elif Utils.find('combat/fleet_arrow', 0.9):
+                    coords = Utils.find('combat/fleet_arrow', 0.9)
+                    coords = [coords.x + 25, coords.y + 320 - count * 20]
 
-            Utils.update_screen()
-        return coords
+                if count > 4:
+                    Utils.swipe(960, 540 + 150 + count * 20, 960, 540, 100)
+                elif (math.isclose(coords[0], 160, abs_tol=30) & math.isclose(coords[1], 142, abs_tol=30)):
+                    coords = [0, 0]
 
-    def get_closest_target(self, blacklist=[], location=[], mystery_node=False):
+            self.fleet_location = coords
+                
+        return self.fleet_location
+
+    def get_closest_target(self, blacklist=[], location=[], mystery_node=False, boss=False):
         """Method to get the enemy closest to the specified location. Note
         this will not always be the enemy that is actually closest due to the
         asset used to find enemies and when enemies are obstructed by terrain
@@ -801,8 +823,7 @@ class CombatModule(object):
         Returns:
             array: An array containing the x and y coordinates of the closest
             enemy to the specified location
-        """
-        boss = True if location else False
+        """ 
         fleet_location = self.get_fleet_location()
 
         if location == []:
@@ -840,23 +861,33 @@ class CombatModule(object):
         return [closest[0], closest[1], target_type]
 
     def check_movement_threads(self):
-        thread_check_button_evade = Thread(
-            target=self.check_movement_threads_func, args=("combat/button_evade",))
-        thread_check_failed_evade = Thread(
-            target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+        thread_list = []
+        # essential threads
         thread_check_alert_info = Thread(
             target=self.check_movement_threads_func, args=("menu/alert_info",))
-        thread_check_item_found = Thread(
-            target=self.check_movement_threads_func, args=("menu/item_found",))
         thread_check_menu_formation = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_formation",))
         thread_check_menu_loading = Thread(
             target=self.check_movement_threads_func, args=("combat/menu_loading",))
+        thread_list.extend([thread_check_alert_info, thread_check_menu_formation, thread_check_menu_loading])
 
-        Utils.multithreader([
-            thread_check_button_evade, thread_check_failed_evade,
-            thread_check_alert_info, thread_check_item_found,
-            thread_check_menu_formation, thread_check_menu_loading])
+        # threads needed for non-event maps (where mystery nodes appears)
+        if self.chapter_map[0].isdigit():
+            thread_check_alert_ammo = Thread(
+                target=self.check_movement_threads_func, args=("combat/alert_ammo_supplies",))
+            thread_check_item_found = Thread(
+                target=self.check_movement_threads_func, args=("menu/item_found",))
+            thread_list.extend([thread_check_alert_ammo, thread_check_item_found])
+
+            # threads needed for story maps without clearing mode enabled
+            if not self.config.combat['clearing_mode']:
+                thread_check_button_evade = Thread(
+                    target=self.check_movement_threads_func, args=("combat/button_evade",))
+                thread_check_failed_evade = Thread(
+                    target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+                thread_list.extend([thread_check_button_evade, thread_check_failed_evade])
+
+        Utils.multithreader(thread_list)
 
         return self.movement_event
 
