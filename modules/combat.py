@@ -458,24 +458,27 @@ class CombatModule(object):
                     count = 0
                 count += 1
 
-    def unable_handler(self, coords):
+    def unable_handler(self, coords, boss=False):
         """
-        Method called when the path to the boss fleet is obstructed by mobs: it procedes to switch targets to the mobs
-        which are blocking the path.
+        Method called when the path to the target (boss fleet or mystery node) is obstructed by mobs: 
+        it procedes to switch targets to the mobs which are blocking the path.
 
         Args:
-            coords (list): coordinate_x, coordinate_y. These coordinates describe the boss location.
+            coords (list): coordinate_x, coordinate_y. These coordinates describe the target's location.
         """
-        Logger.log_debug("Unable to reach boss function started.")
+        if boss:
+            Logger.log_debug("Unable to reach boss function started.")
+        else:
+            Logger.log_debug("Unable to reach selected target function started.")
         self.blacklist.clear()
-        closest_to_boss = self.get_closest_target(self.blacklist, coords)
+        closest_to_unreachable_target = self.get_closest_target(self.blacklist, coords, boss=boss)
 
-        Utils.touch(closest_to_boss)
-        Utils.wait_update_screen(1)
+        Utils.touch(closest_to_unreachable_target)
+        Utils.update_screen()
 
         if Utils.find("combat/alert_unable_reach"):
-            Logger.log_warning("Unable to reach next to boss.")
-            self.blacklist.append(closest_to_boss[0:2])
+            Logger.log_warning("Unable to reach next to selected target.")
+            self.blacklist.append(closest_to_unreachable_target[0:2])
 
             while True:
                 closest_enemy = self.get_closest_target(self.blacklist)
@@ -492,7 +495,7 @@ class CombatModule(object):
                 return False
             return True
         else:
-            self.movement_handler(closest_to_boss)
+            self.movement_handler(closest_to_unreachable_target)
             if not self.battle_handler():
                 return False
             return True
@@ -629,8 +632,13 @@ class CombatModule(object):
                 continue
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
-                self.blacklist.append(target_info[0:2])
-                target_info = None
+                if self.config.combat['focus_on_mystery_nodes'] and target_info[2] == "mystery_node":
+                    self.mystery_nodes_list.append(target_info[0:2])
+                    self.enemies_list.clear()
+                    self.unable_handler(target_info[0:2])
+                else:
+                    self.blacklist.append(target_info[0:2])
+                    target_info = None
                 continue
             else:
                 movement_result = self.movement_handler(target_info)
@@ -656,7 +664,7 @@ class CombatModule(object):
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_msg("Unable to reach boss.")
                 #handle boss' coordinates
-                if not self.unable_handler(boss_info[0:2]):
+                if not self.unable_handler(boss_info[0:2], boss=True):
                     return
                 continue
             else:
@@ -791,7 +799,7 @@ class CombatModule(object):
             Utils.update_screen()
         return coords
 
-    def get_closest_target(self, blacklist=[], location=[], mystery_node=False):
+    def get_closest_target(self, blacklist=[], location=[], mystery_node=False, boss=False):
         """Method to get the enemy closest to the specified location. Note
         this will not always be the enemy that is actually closest due to the
         asset used to find enemies and when enemies are obstructed by terrain
@@ -807,8 +815,7 @@ class CombatModule(object):
         Returns:
             array: An array containing the x and y coordinates of the closest
             enemy to the specified location
-        """
-        boss = True if location else False
+        """ 
         fleet_location = self.get_fleet_location()
 
         if location == []:
