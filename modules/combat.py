@@ -422,6 +422,12 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region["menu_combat_start"])
                 self.battle_handler()
                 continue
+            if event["combat/alert_ammo_supplies"]:
+                Logger.log_msg("Received ammo supplies")
+                if target_info[2] == "mystery_node":
+                    Logger.log_msg("Target reached.")
+                    return 0
+                continue
             if event["menu/item_found"]:
                 Logger.log_msg("Item found on node.")
                 Utils.touch_randomly(self.region['tap_to_continue'])
@@ -844,6 +850,8 @@ class CombatModule(object):
             target=self.check_movement_threads_func, args=("combat/button_evade",))
         thread_check_failed_evade = Thread(
             target=self.check_movement_threads_func, args=("combat/alert_failed_evade",))
+        thread_check_alert_ammo = Thread(
+            target=self.check_movement_threads_func, args=("combat/alert_ammo_supplies",))
         thread_check_alert_info = Thread(
             target=self.check_movement_threads_func, args=("menu/alert_info",))
         thread_check_item_found = Thread(
@@ -855,8 +863,9 @@ class CombatModule(object):
 
         Utils.multithreader([
             thread_check_button_evade, thread_check_failed_evade,
-            thread_check_alert_info, thread_check_item_found,
-            thread_check_menu_formation, thread_check_menu_loading])
+            thread_check_alert_ammo, thread_check_alert_info, 
+            thread_check_item_found, thread_check_menu_formation, 
+            thread_check_menu_loading])
 
         return self.movement_event
 
