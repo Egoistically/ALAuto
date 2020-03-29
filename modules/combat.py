@@ -426,6 +426,7 @@ class CombatModule(object):
                 Logger.log_msg("Received ammo supplies")
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
+                    self.fleet_location = target_info[0:2]
                     return 0
                 continue
             if self.chapter_map[0].isdigit() and event["menu/item_found"]:
@@ -436,6 +437,7 @@ class CombatModule(object):
                     Utils.touch_randomly(self.region["close_strategy_menu"])
                 if target_info[2] == "mystery_node":
                     Logger.log_msg("Target reached.")
+                    self.fleet_location = target_info[0:2]
                     return 0
                 continue
             if event["menu/alert_info"]:
@@ -443,9 +445,11 @@ class CombatModule(object):
                 Utils.find_and_touch("menu/alert_close")
                 continue
             if event["combat/menu_loading"]:
+                self.fleet_location = target_info[0:2]
                 return 1
             elif event["combat/menu_formation"]:
                 Utils.find_and_touch("combat/auto_combat_off")
+                self.fleet_location = target_info[0:2]
                 return 1
             else:
                 if count != 0 and count % 3 == 0:
@@ -453,6 +457,7 @@ class CombatModule(object):
                 if count > 21:
                     Logger.log_msg("Blacklisting location and searching for another enemy.")
                     self.blacklist.append(location[0:2])
+                    self.fleet_location = None
 
                     location = self.get_closest_target(self.blacklist, mystery_node=(not self.config.combat["ignore_mystery_nodes"]))
                     count = 0
@@ -531,6 +536,7 @@ class CombatModule(object):
     def clear_map(self):
         """ Clears map.
         """
+        self.fleet_location = None
         self.combats_done = 0
         self.kills_count = 0
         self.enemies_list.clear()
@@ -655,6 +661,7 @@ class CombatModule(object):
         self.enemies_list.clear()
         self.mystery_nodes_list.clear()
         self.blacklist.clear()
+        self.fleet_location = None
 
         while True:
             #tap at boss' coordinates
@@ -773,31 +780,33 @@ class CombatModule(object):
             array: An array containing the x and y coordinates of the fleet's
             current location.
         """
-        coords = [0, 0]
-        count = 0
+        if not self.fleet_location:
+            coords = [0, 0]
+            count = 0
 
-        while coords == [0, 0]:
-            Utils.update_screen()
-            count += 1
-
-            if count > 4:
-                Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
+            while coords == [0, 0]:
                 Utils.update_screen()
+                count += 1
 
-            if Utils.find('combat/fleet_ammo', 0.8):
-                coords = Utils.find('combat/fleet_ammo', 0.8)
-                coords = [coords.x + 140, coords.y + 225 - count * 20]
-            elif Utils.find('combat/fleet_arrow', 0.9):
-                coords = Utils.find('combat/fleet_arrow', 0.9)
-                coords = [coords.x + 25, coords.y + 320 - count * 20]
+                if count > 4:
+                    Utils.swipe(960, 540, 960, 540 + 150 + count * 20, 100)
+                    Utils.update_screen()
 
-            if count > 4:
-                Utils.swipe(960, 540 + 150 + count * 20, 960, 540, 100)
-            elif (math.isclose(coords[0], 160, abs_tol=30) & math.isclose(coords[1], 142, abs_tol=30)):
-                coords = [0, 0]
+                if Utils.find('combat/fleet_ammo', 0.8):
+                    coords = Utils.find('combat/fleet_ammo', 0.8)
+                    coords = [coords.x + 140, coords.y + 225 - count * 20]
+                elif Utils.find('combat/fleet_arrow', 0.9):
+                    coords = Utils.find('combat/fleet_arrow', 0.9)
+                    coords = [coords.x + 25, coords.y + 320 - count * 20]
 
-            Utils.update_screen()
-        return coords
+                if count > 4:
+                    Utils.swipe(960, 540 + 150 + count * 20, 960, 540, 100)
+                elif (math.isclose(coords[0], 160, abs_tol=30) & math.isclose(coords[1], 142, abs_tol=30)):
+                    coords = [0, 0]
+
+            self.fleet_location = coords
+                
+        return self.fleet_location
 
     def get_closest_target(self, blacklist=[], location=[], mystery_node=False, boss=False):
         """Method to get the enemy closest to the specified location. Note
