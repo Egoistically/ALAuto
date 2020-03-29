@@ -553,11 +553,12 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
+            'E-A2': lambda: Utils.swipe(960, 540, 960, 580, 300),
+            'E-A3': lambda: Utils.swipe(960, 540, 960, 500, 300),
+            'E-B3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
             'E-C2': lambda: Utils.swipe(960, 540, 960, 580, 300),
-            'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 100),
-            'E-SP1': lambda: Utils.swipe(960, 540, 1400, 640, 300),
-            'E-SP2': lambda: Utils.swipe(960, 540, 1500, 540, 300),
-            'E-SP3': lambda: Utils.swipe(960, 540, 1300, 740, 300),
+            'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 300),
+            'E-D3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
             '7-2': lambda: Utils.swipe(960, 540, 1300, 600, 300),
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
@@ -592,7 +593,7 @@ class CombatModule(object):
             if self.exit != 0:
                 self.retreat_handler()
                 return True
-            if self.kills_count >= self.kills_before_boss[self.chapter_map] and Utils.find_in_scaling_range("enemy/fleet_boss"):
+            if self.kills_count >= self.kills_before_boss[self.chapter_map] and Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:
@@ -606,15 +607,34 @@ class CombatModule(object):
 
                     Utils.touch_randomly(self.region['button_switch_fleet'])
                     Utils.wait_update_screen(2)
-                    boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
+                    boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
 
-                    while not boss_region:
-                        if s > 3: s = 0
-                        swipes.get(s)()
+                    if self.chapter_map == 'E-B3' or self.chapter_map == 'E-D3':
+                        # sometimes the fleet marker blocks the view of the boss icon
+                        # moving the boss fleet first to the right and then to the left
+                        # to get a clear view of the boss
+                        counter = 0
+                        while not boss_region:
+                            self.fleet_location = None
+                            fleet_location = self.get_fleet_location()
+                            if counter < 2:
+                                Utils.touch([fleet_location[0] + 200, fleet_location[1]])
+                            else:
+                                Utils.touch([fleet_location[0] - 200, fleet_location[1]])
+                            Utils.wait_update_screen()
+                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
+                            counter += 1
+                            # reset counter if it is equal to 4
+                            counter = counter % 4
+                    else:
+                        while not boss_region:
+                            if s > 3: s = 0
+                            swipes.get(s)()
 
-                        Utils.wait_update_screen(0.5)
-                        boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
-                        s += 1
+                            Utils.wait_update_screen(0.5)
+                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
+                            s += 1
+
                     # swipe to center the boss fleet on the screen
                     # first calculate the translation vector coordinates
                     horizontal_translation = 150 if boss_region.x < 960 else - 150
@@ -624,6 +644,11 @@ class CombatModule(object):
                     Utils.wait_update_screen()
 
                 boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
+                while not boss_region:
+                    # refreshing screen to deal with mist
+                    Utils.wait_update_screen(1)
+                    boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
+
                 #extrapolates boss_info(x,y,enemy_type) from the boss_region found
                 boss_info = [boss_region.x + 50, boss_region.y + 25, "boss"]
                 self.clear_boss(boss_info)
