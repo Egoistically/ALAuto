@@ -526,7 +526,7 @@ class CombatModule(object):
                 Utils.touch_randomly(self.region['retreat_button'])
                 continue
             if Utils.find("menu/button_confirm"):
-                Utils.touch_randomly(self.region['dismiss_commission_dialog'])
+                Utils.touch_randomly(self.region['combat_com_confirm'])
                 continue
             if Utils.find("menu/attack"):
                 if self.exit != 1 and self.exit != 2 and self.exit != 5:
@@ -639,7 +639,6 @@ class CombatModule(object):
             if Utils.find("combat/alert_unable_reach", 0.8):
                 Logger.log_warning("Unable to reach the target.")
                 if self.config.combat['focus_on_mystery_nodes'] and target_info[2] == "mystery_node":
-                    self.mystery_nodes_list.append(target_info[0:2])
                     self.enemies_list.clear()
                     self.unable_handler(target_info[0:2])
                 else:
