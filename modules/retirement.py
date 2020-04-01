@@ -85,7 +85,7 @@ class RetirementModule(object):
                         Utils.touch_randomly(self.region['retire_tab_1'])
                     Utils.script_sleep(1)
                     continue
-                if Utils.find("retirement/selected_none"):
+                if Utils.find("retirement/selected_none", similarity=0.9):
                     self.set_sort()
                     self.retire_ships()
                     if self.called_from_menu:
@@ -181,12 +181,12 @@ class RetirementModule(object):
                 Logger.log_msg("No ships left to retire.")
                 #Utils.touch_randomly(self.region['menu_nav_back'])
                 return
-            if Utils.find("retirement/selected_none"):
-                self.select_ships()
-                continue
-            if Utils.find("retirement/bonus"):
+            if Utils.find("retirement/bonus", similarity=0.9):
                 self.handle_retirement()
                 self.retirement_done = True
+                continue
+            if Utils.find("retirement/selected_none", similarity=0.9):
+                self.select_ships()
                 continue
 
     def select_ships(self):
