@@ -222,7 +222,8 @@ class CombatModule(object):
                     (Utils.find('maps/map_E-B1', 0.99) or Utils.find('maps/map_E-D1', 0.99)):
                     Utils.touch_randomly(self.region['map_nav_left'])
                     Logger.log_debug("Swiping to the left")
-                else:
+                elif (self.chapter_map[2] == 'B' or self.chapter_map[2] == 'D') and \
+                    (Utils.find('maps/map_E-A1', 0.99) or Utils.find('maps/map_E-C1', 0.99)):
                     Utils.touch_randomly(self.region['map_nav_right'])
                     Logger.log_debug("Swiping to the right")
             else:
@@ -613,19 +614,24 @@ class CombatModule(object):
                         # sometimes the fleet marker blocks the view of the boss icon
                         # moving the boss fleet first to the right and then to the left
                         # to get a clear view of the boss
-                        counter = 0
+                        counter = 1
+                        self.fleet_location = [960, 540]
                         while not boss_region:
-                            self.fleet_location = None
-                            fleet_location = self.get_fleet_location()
-                            if counter < 2:
-                                Utils.touch([fleet_location[0] + 200, fleet_location[1]])
+                            if counter % 2 != 0:
+                                Utils.touch([self.fleet_location[0] + (counter % 5) * 200, self.fleet_location[1]])
+                                self.fleet_location[0] += (counter % 5) * 200
                             else:
-                                Utils.touch([fleet_location[0] - 200, fleet_location[1]])
+                                Utils.touch([self.fleet_location[0] - (counter % 5) * 200, self.fleet_location[1]])
+                                self.fleet_location[0] -= (counter % 5) * 200
+
                             Utils.wait_update_screen()
                             boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
                             counter += 1
-                            # reset counter if it is equal to 4
-                            counter = counter % 4
+                            if counter == 5: counter += 1
+                            if counter == 10:
+                                # back to starting position
+                                counter = 1
+                                self.fleet_location = [960, 540]
                     else:
                         while not boss_region:
                             if s > 3: s = 0
