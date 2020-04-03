@@ -45,7 +45,9 @@ class RetirementModule(object):
             'confirm_selected_ships_button': Region(1412, 938, 218, 61),
             'tap_to_continue': Region(661, 840, 598, 203),
             'confirm_selected_equipment_button': Region(1320, 785, 232, 62),
-            'disassemble_button': Region(1099, 827, 225, 58)
+            'disassemble_button': Region(1099, 827, 225, 58),
+            'close_batch_retire': Region(1090, 930, 240, 75),
+            'button_batch_retire': Region(960, 965, 255, 80)
         }
 
     def retirement_logic_wrapper(self, forced=False):
@@ -191,9 +193,15 @@ class RetirementModule(object):
 
     def select_ships(self):
         Logger.log_msg("Selecting ships for retirement.")
+        Utils.touch_randomly(self.region['button_batch_retire'])
+        Utils.script_sleep(0.7)
+        if Utils.find("retirement/no_batch", similarity=0.9):
+            for i in range(0, 7):
+                Utils.touch_randomly(self.region['select_ship_{}'.format(i)])
+        else:
+            Utils.touch_randomly(self.region['close_batch_retire']);
 
-        for i in range(0, 7):
-            Utils.touch_randomly(self.region['select_ship_{}'.format(i)])
+
 
     def handle_retirement(self):
         Utils.touch_randomly(self.region['confirm_retire_button'])
