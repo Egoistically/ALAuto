@@ -8,6 +8,7 @@ from modules.enhancement import EnhancementModule
 from modules.mission import MissionModule
 from modules.retirement import RetirementModule
 from modules.headquarters import HeadquartersModule
+from modules.research import ResearchModule
 from modules.event import EventModule
 from datetime import datetime, timedelta
 from util.adb import Adb
@@ -26,6 +27,7 @@ class ALAuto(object):
         'missions': None,
         'retirement': None,
         'headquarters': None,
+        'research': None,
         'event': None
     }
 
@@ -55,6 +57,8 @@ class ALAuto(object):
         if self.config.combat['enabled']:
             self.modules['combat'] = CombatModule(self.config, self.stats, self.modules['retirement'], self.modules['enhancement'])
             self.oil_limit = self.config.combat['oil_limit']
+        if self.config.research['enabled']:
+            self.modules['research'] = ResearchModule(self.config, self.stats)
         if self.config.events['enabled']:
             self.modules['event'] = EventModule(self.config, self.stats)
         self.print_stats_check = True
@@ -137,6 +141,12 @@ class ALAuto(object):
         if self.modules['headquarters']:
             self.modules['headquarters'].hq_logic_wrapper()
 
+    def run_research_cycle(self):
+        """Method to run the research cycle.
+        """
+        if self.modules['research']:
+            self.modules['research'].research_logic_wrapper()
+
     def run_event_cycle(self):
         """Method to run the event cycle
         """
@@ -211,6 +221,8 @@ try:
             script.run_mission_cycle()
         if Utils.find("headquarters/hq_alert"):
             script.run_hq_cycle()
+        if Utils.find("research/lab_alert"):
+            script.run_research_cycle()
         if script.should_sortie():
             script.run_sortie_cycle()
             script.print_cycle_stats()

@@ -28,6 +28,7 @@ class Config(object):
         self.retirement = {'enabled': False}
         self.dorm = {'enabled': False}
         self.academy = {'enabled': False}
+        self.research = {'enabled': False}
         self.events = {'enabled': False}
         self.network = {}
         self.assets = {}
@@ -65,6 +66,9 @@ class Config(object):
             self.retirement['enabled'] = config.getboolean('Modules', 'Retirement')
             self.retirement['rares'] = True
             self.retirement['commons'] = True
+
+        if config.getboolean('Research', 'Enabled'):
+            self._read_research(config)
 
         if config.getboolean('Events', 'Enabled'):
             self._read_event(config)
@@ -130,6 +134,28 @@ class Config(object):
         self.enhancement['enabled'] = True
         self.enhancement['single_enhancement'] = config.getboolean('Enhancement', 'SingleEnhancement')
 
+    def _read_research(self, config):
+        """Method to parse the Research settings of the passed in config.
+        Args:
+            config (ConfigParser): ConfigParser instance
+        """
+        self.research['enabled'] = True
+        self.research['AllowFreeProjects'] = config.getboolean('Research', 'AllowFreeProjects')
+        self.research['AllowConsumingCoins'] = config.getboolean('Research', 'AllowConsumingCoins')
+        self.research['AllowConsumingCubes'] = config.getboolean('Research', 'AllowConsumingCubes')
+        self.research['WithoutRequirements'] = config.getboolean('Research', 'WithoutRequirements')
+        self.research['AwardMustContainPRBlueprint'] = config.getboolean('Research', 'AwardMustContainPRBlueprint')
+        self.research['30Minutes'] = config.getboolean('Research', '30Minutes')
+        self.research['1Hour'] = config.getboolean('Research', '1Hour')
+        self.research['1Hour30Minutes'] = config.getboolean('Research', '1Hour30Minutes')
+        self.research['2Hours'] = config.getboolean('Research', '2Hours')
+        self.research['2Hours30Minutes'] = config.getboolean('Research', '2Hours30Minutes')
+        self.research['4Hours'] = config.getboolean('Research', '4Hours')
+        self.research['5Hours'] = config.getboolean('Research', '5Hours')
+        self.research['6Hours'] = config.getboolean('Research', '6Hours')
+        self.research['8Hours'] = config.getboolean('Research', '8Hours')
+        self.research['12Hours'] = config.getboolean('Research', '12Hours')
+
     def _read_event(self, config):
         """Method to parse the Event settings of the passed in config.
         Args:
@@ -170,7 +196,7 @@ class Config(object):
             self.ok = False
 
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
-           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.events['enabled']:
+           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.research['enabled'] and not self.events['enabled']:
             Logger.log_error("All modules are disabled, consider checking your config.")
             self.ok = False
 
@@ -223,6 +249,11 @@ class Config(object):
         if self.retirement['enabled']:
             if not (self.retirement['commons'] or self.retirement['rares']):
                 Logger.log_error("Retirement is enabled, but no ship rarities are selected.")
+                self.ok = False
+
+        if self.research['enabled']:
+            if not (self.research['30Minutes'] or self.research['1Hour'] or self.research['1Hour30Minutes'] or self.research['2Hours'] or self.research['2Hours30Minutes'] or self.research['4Hours'] or self.research['5Hours'] or self.research['6Hours'] or self.research['8Hours'] or self.research['12Hours']):
+                Logger.log_error("Research is enabled, but without allowed times.")
                 self.ok = False
 
     def _rollback_config(self, config):
