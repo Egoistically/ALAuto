@@ -37,7 +37,7 @@ class ResearchModule(object):
                 Utils.script_sleep(1)
                 Logger.log_msg("Searching for completed research.")
 
-                if self.CollectingResearch() == False:
+                if not self.collecting_research():
                     Logger.log_msg("Did not found any completed research.")
 
                 started = False
@@ -46,7 +46,7 @@ class ResearchModule(object):
                     if not self.research_cycle():
                         Utils.touch_randomly(self.region['right_arrow'])
                     else:
-                        if self.startProject() == True:
+                        if self.start_project() == True:
                             Logger.log_success("Project started.")
                             started = True
                             break
@@ -100,7 +100,7 @@ class ResearchModule(object):
             else:
                  return True
 
-    def startProject(self):
+    def start_project(self):
         Utils.touch_randomly(self.region['commence_tab'])
         Utils.wait_update_screen(1)
         #solution for projects that don't require confirmation.
@@ -116,7 +116,7 @@ class ResearchModule(object):
                 else:
                     return False
 
-    def CollectingResearch(self):
+    def collecting_research(self):
         Utils.touch_randomly(self.region['project_click'])
         Utils.wait_update_screen(1)
         if Utils.find("research/item_found"):
