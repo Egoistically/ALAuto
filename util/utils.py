@@ -46,6 +46,13 @@ class Region(object):
 screen = None
 last_ocr = ''
 
+# EXPERIMENTAL ASCREENCAP FLAG
+useAScreenCap = False
+
+# CONDITIONAL IMPORT
+if useAScreenCap:
+    import lz4.block
+
 class Utils(object):
 
     small_boss_icon = False
@@ -99,8 +106,20 @@ class Utils(object):
         while screen is None:
             if Adb.legacy:
                 screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8),0)
-            else:
+            elif not useAScreenCap:
                 screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
+            else:
+                start_time = time.perf_counter()
+                raw_compressed_data = Adb.exec_out('/data/local/tmp/ascreencap --pack 2 --stdout')
+                compressed_data_header = numpy.frombuffer(raw_compressed_data[0:20], dtype=numpy.uint32)
+                if compressed_data_header[0] != 828001602:
+                    compressed_data_header = compressed_data_header.byteswap()
+                    if compressed_data_header[0] != 828001602:
+                        raise Exception('aScreenCap header verification failure, corrupted image received')
+                uncompressed_data_size = compressed_data_header[1].item()
+                screen = cv2.imdecode(numpy.frombuffer(lz4.block.decompress(raw_compressed_data[20:], uncompressed_size=uncompressed_data_size), dtype=numpy.uint8), 0)
+                elapsed_time = time.perf_counter() - start_time
+                Logger.log_debug("aScreenCap took {} ms to complete.".format('%.2f'%(elapsed_time * 1000)))
 
     @classmethod
     def wait_update_screen(cls, time=None):

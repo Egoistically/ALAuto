@@ -560,7 +560,7 @@ class CombatModule(object):
             'E-C2': lambda: Utils.swipe(960, 540, 960, 580, 300),
             'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 300),
             'E-D3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
-            '7-2': lambda: Utils.swipe(960, 540, 1300, 600, 300),
+            '7-2': lambda: Utils.swipe(960, 540, 400, 600, 300),
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
             '12-4': lambda: Utils.swipe(960, 300, 960, 540, 300),
@@ -569,7 +569,7 @@ class CombatModule(object):
             '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 300),
             '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 300)
         }
-        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 1300, 540, 300))()
+        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 450, 540, 300))()
 
         # disable subs' hunting range
         if self.config.combat["hide_subs_hunting_range"]:
