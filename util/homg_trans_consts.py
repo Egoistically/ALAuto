@@ -1,4 +1,4 @@
-# Image file path
+# Image file paths
 FREE_TILES_IMG_UP = 'assets/map_detection/free_tile_u.png'
 FREE_TILES_IMG_DOWN = 'assets/map_detection/free_tile_d.png'
 FREE_TILES_IMG_LEFT = 'assets/map_detection/free_tile_l.png'
@@ -10,12 +10,12 @@ QUESTION_MARK_IMG = 'assets/map_detection/persp_qmark.png'
 FREE_TILE_CENTER_IMG = 'assets/map_detection/free_tile_center.png'
 
 # Constants used in the returned map
-OBSTACLE = 0
-FREE = 1
-CHARACTER = 2
-SUPPLY = 3
-ENEMY = 4
-BOSS = 5
+MAP_OBSTACLE = 0
+MAP_FREE = 1
+MAP_CHARACTER = 2
+MAP_SUPPLY = 3
+MAP_ENEMY = 4
+MAP_BOSS = 5
 
 # Constants used in the class
 TILE_WIDTH = 209
