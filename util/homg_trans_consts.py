@@ -1,8 +1,4 @@
-TILE_WIDTH = 209
-TILE_HEIGHT = 209
-SCREEN_TOP_LEFT_X = 0
-SCREEN_TOP_LEFT_Y = 0
-
+# Image file path
 FREE_TILES_IMG_UP = 'assets/map_detection/free_tile_u.png'
 FREE_TILES_IMG_DOWN = 'assets/map_detection/free_tile_d.png'
 FREE_TILES_IMG_LEFT = 'assets/map_detection/free_tile_l.png'
@@ -13,6 +9,7 @@ BOSS_SMALL_IMG = 'assets/map_detection/persp_boss_small.png'
 QUESTION_MARK_IMG = 'assets/map_detection/persp_qmark.png'
 FREE_TILE_CENTER_IMG = 'assets/map_detection/free_tile_center.png'
 
+# Constants used in the returned map
 OBSTACLE = 0
 FREE = 1
 CHARACTER = 2
@@ -20,10 +17,11 @@ SUPPLY = 3
 ENEMY = 4
 BOSS = 5
 
-
-BATTLE_MAP_TOP_LEFT = [185, 240]
+# Constants used in the class
+TILE_WIDTH = 209
+TILE_HEIGHT = 209
 MAP_CROP_TOP_LEFT = [185, 240]
-MAP_CROP_BUTTOM_RIGHT = [1795, 945]
+MAP_CROP_BOTTOM_RIGHT = [1795, 945]
 TRANS_SRC_PTS = [[430, 790], [630, 790], [616, 950], [407, 950]]
 TRANS_DST_PTS = [[430, 790], [630, 790], [630, 990], [430, 990]]
 CV_CANNY_MIN = 50

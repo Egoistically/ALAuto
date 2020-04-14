@@ -1,10 +1,13 @@
 import cv2
 import numpy as np
-from util.utils import Utils
 import util.homg_trans_consts as trans_consts
 
 
 class HomographyTransform():
+    """
+    Dependencies of each function must be executed at least once before calling it.
+    """
+
     __top_left_tile_x = None
     __top_left_tile_y = None
     __x_max_index = None
@@ -14,15 +17,20 @@ class HomographyTransform():
     __h_trans_m = None
     __inv_h_trans_m = None
     __h_trans_screen_size = None
+    __small_boss_icon = False
 
     @classmethod
     def init_homg_vars(cls):
+        """
+        Initialize the variables used in this class.
+        Must be executed once before executing any other functions.
+        """
         src_pts = np.subtract(trans_consts.TRANS_SRC_PTS, trans_consts.MAP_CROP_TOP_LEFT)
         dst_pts = np.subtract(trans_consts.TRANS_DST_PTS, trans_consts.MAP_CROP_TOP_LEFT)
 
         # Calculate Homography
         h, status = cv2.findHomography(src_pts, dst_pts)
-        diff_arr = np.subtract(trans_consts.MAP_CROP_BUTTOM_RIGHT, trans_consts.MAP_CROP_TOP_LEFT)
+        diff_arr = np.subtract(trans_consts.MAP_CROP_BOTTOM_RIGHT, trans_consts.MAP_CROP_TOP_LEFT)
         src_w = diff_arr[0]
         src_h = diff_arr[1]
         lin_homg_pts = np.array([
@@ -55,18 +63,36 @@ class HomographyTransform():
         cls.__h_trans_screen_size = (anchor_x + max(max_x, src_w), anchor_y + max(max_y, src_h))
 
     @classmethod
+    def use_small_boss_icon(cls, val):
+        """
+        Set using small boss icon
+        :param val: True if using small boss icon. False if using normal icon.
+        :return:
+        """
+        __small_boss_icon = val
+
+    @classmethod
     def load_color_screen(cls, color_screen):
+        """
+        Load the color screen.
+        """
         cls.__color_screen = color_screen
         cls.__screen = cv2.cvtColor(color_screen, cv2.COLOR_BGR2GRAY)
 
     @classmethod
     def init_map_coordinate(cls):
+        """
+        Calculate the coordinates of the tiles on the map.
+        Try swiping the map if it returns false.
+        Dependencies: init_homg_vars, load_color_screen
+        :return: True if successfully initialize the coordinates of the tiles. False otherwise.
+        """
         # crop the color screen
         free_tile_center = cv2.imread(trans_consts.FREE_TILE_CENTER_IMG, cv2.IMREAD_GRAYSCALE)
 
         crop_color_screen = cls.__color_screen[:][
-                            trans_consts.MAP_CROP_TOP_LEFT[1]:trans_consts.MAP_CROP_BUTTOM_RIGHT[1],
-                            trans_consts.MAP_CROP_TOP_LEFT[0]:trans_consts.MAP_CROP_BUTTOM_RIGHT[0]]
+                            trans_consts.MAP_CROP_TOP_LEFT[1]:trans_consts.MAP_CROP_BOTTOM_RIGHT[1],
+                            trans_consts.MAP_CROP_TOP_LEFT[0]:trans_consts.MAP_CROP_BOTTOM_RIGHT[0]]
         # Warp source image to destination based on homography
         screen_trans = cv2.warpPerspective(crop_color_screen, cls.__h_trans_m, cls.__h_trans_screen_size)
         screen_edge = cv2.Canny(screen_trans, trans_consts.CV_CANNY_MIN, trans_consts.CV_CANNY_MAX)
@@ -123,9 +149,10 @@ class HomographyTransform():
 
             pivot_idx = np.argmin(accum_dist)
 
-            # Calculate how many tiles on the map and the coordinate of top left tile in transformed space
+
             x, y = rects[pivot_idx]
 
+        # Calculate how many tiles on the map and the coordinate of top left tile in homography space
         cls.__top_left_tile_x = int(x % trans_consts.TILE_WIDTH)
         cls.__top_left_tile_y = int(y % trans_consts.TILE_HEIGHT)
         cls.__y_max_index = int(
@@ -139,10 +166,20 @@ class HomographyTransform():
 
     @classmethod
     def get_map_shape(cls):
+        """
+         Return the shape of the map which will be returned in create_map()
+         Dependencies: init_map_coordinate
+         """
         return (cls.__y_max_index, cls.__x_max_index)
 
     @classmethod
     def create_map(cls):
+        """
+        Detect the object in each tile.
+        See homg_trans_consts for the definitions of the constants used in the returned map.
+        Dependencies: init_map_coordinate
+        :return: M x N numpy array filled with constants defined in homg_trans_consts
+        """
         # Read source image.
         free_tile_imgs = []
         free_tile_imgs.append(cv2.imread(trans_consts.FREE_TILES_IMG_UP, cv2.IMREAD_GRAYSCALE))
@@ -152,8 +189,8 @@ class HomographyTransform():
 
         # crop the color screen
         crop_color_screen = cls.__color_screen[:][
-                            trans_consts.MAP_CROP_TOP_LEFT[1]:trans_consts.MAP_CROP_BUTTOM_RIGHT[1],
-                            trans_consts.MAP_CROP_TOP_LEFT[0]:trans_consts.MAP_CROP_BUTTOM_RIGHT[0]]
+                            trans_consts.MAP_CROP_TOP_LEFT[1]:trans_consts.MAP_CROP_BOTTOM_RIGHT[1],
+                            trans_consts.MAP_CROP_TOP_LEFT[0]:trans_consts.MAP_CROP_BOTTOM_RIGHT[0]]
         # Warp source image to destination based on homography
         screen_trans = cv2.warpPerspective(crop_color_screen, cls.__h_trans_m, cls.__h_trans_screen_size)
         screen_edge = cv2.Canny(screen_trans, trans_consts.CV_CANNY_MIN, trans_consts.CV_CANNY_MAX)
@@ -248,7 +285,15 @@ class HomographyTransform():
 
     @classmethod
     def __match_boss(cls, screen_trans, battle_map):
-        if Utils.small_boss_icon:
+        """
+        Find the tile where the boss is located.
+        Result will write into the corresponded tile in battle_map.
+        Dependencies: init_map_coordinate
+        :param screen_trans: the color screen to find the boss icon
+        :param battle_map: M x N numpy array
+        :return:
+        """
+        if cls.__small_boss_icon:
             boss = cv2.imread(trans_consts.BOSS_SMALL_IMG)
         else:
             boss = cv2.imread(trans_consts.BOSS_IMG)
@@ -266,6 +311,14 @@ class HomographyTransform():
 
     @classmethod
     def __match_character(cls, screen_trans, battle_map):
+        """
+        Find the tile where the character is located.
+        Result will write into the corresponded tile in battle_map.
+        Dependencies: init_map_coordinate
+        :param screen_trans: the color screen to find the arrow of the character
+        :param battle_map: M x N numpy array
+        :return:
+        """
         arrow = cv2.imread(trans_consts.ARROW_IMG)
         res = cv2.matchTemplate(screen_trans, arrow, cv2.TM_CCOEFF_NORMED)
         max_similarity = np.max(res)
@@ -276,25 +329,72 @@ class HomographyTransform():
             if len(point) > 0:
                 # Calculate x and y of the tile where the character is
                 # add a y offset due to the arrow is above the character
-                x, y = cls.coord_to_battle_map_index(
+                x, y = cls.coord_to_map_index(
                     (point[0][0], point[0][1] + trans_consts.ARROW_CHARACTER_Y_OFFSET))
                 if 0 <= x < battle_map.shape[1] and 0 <= y < battle_map.shape[0]:
                     battle_map[y, x] = trans_consts.CHARACTER
 
     @classmethod
-    def coord_to_battle_map_index(cls, coord):
-        x = int((coord[0] - cls.__top_left_tile_x) / trans_consts.TILE_WIDTH)
-        y = int((coord[1] - cls.__top_left_tile_y) / trans_consts.TILE_HEIGHT)
-        return x, y
+    def coord_to_map_index(cls, coord):
+        """
+        Return the coordinate in the transformed space of the tile.
+        Dependencies: init_map_coordinate
+        :param coord: coordinate in the transformed space
+        :return: tile index
+        """
+        col = int((coord[0] - cls.__top_left_tile_x) / trans_consts.TILE_WIDTH)
+        row = int((coord[1] - cls.__top_left_tile_y) / trans_consts.TILE_HEIGHT)
+        return row, col
 
     @classmethod
-    def battle_map_index_to_coord(cls, index):
+    def map_index_to_coord(cls, index):
+        """
+        Return the coordinate in the transformed space of the tile.
+        Dependencies: init_map_coordinate
+        :param index: tile index
+        :return: coordinate of the tile in the transformed space.
+        """
         x = cls.__top_left_tile_x + index[1] * trans_consts.TILE_WIDTH + trans_consts.TILE_WIDTH / 2
         y = cls.__top_left_tile_y + index[0] * trans_consts.TILE_HEIGHT + trans_consts.TILE_HEIGHT / 2
         return x, y
 
     @classmethod
+    def inv_transform_coord(cls, coord):
+        """
+        Transform coordinate in homography transformed space to original space.
+        Dependencies: init_map_coordinate
+        :param coord: point in transformed space
+        :return: point in the original space
+        """
+        point = np.array([[coord]])
+        inv_persp_point = cv2.perspectiveTransform(point, cls.__inv_h_trans_m)[0][0]
+        inv_persp_point[0] += trans_consts.MAP_CROP_TOP_LEFT[0]
+        inv_persp_point[1] += trans_consts.MAP_CROP_TOP_LEFT[1]
+        return inv_persp_point
+
+    @classmethod
+    def transform_coord(cls, coord):
+        """
+        Transform coordinate in original space to homography transformed space.
+        Dependencies: init_map_coordinate
+        :param coord: point in original space
+        :return: point in transformed space
+        """
+        point = np.array([[[coord[0] - trans_consts.MAP_CROP_TOP_LEFT[0],
+                               coord[1] - trans_consts.MAP_CROP_TOP_LEFT[1]]]])
+        persp_point = cv2.perspectiveTransform(point, cls.__h_trans_m)[0][0]
+        return persp_point
+
+    @classmethod
     def bfs_search(cls, battle_map, start_tile):
+        """
+        Do a BFS search on battle_map starting from start_tile.
+        The object on start_tile will be ignored.
+        :param battle_map: map created by create_map()
+        :param start_tile: the index of the tile to start BFS
+        :return: found_enemies and found_supplies, both sorted from the nearest to the farthest.
+        """
+
         if start_tile[0] < 0 or start_tile[0] >= battle_map.shape[0] or start_tile[1] < 0 or start_tile[1] >= \
                 battle_map.shape[1]:
             return [], []
