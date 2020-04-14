@@ -344,7 +344,7 @@ class HomographyTransform():
         """
         col = int((coord[0] - self.__top_left_tile_x) / trans_consts.TILE_WIDTH)
         row = int((coord[1] - self.__top_left_tile_y) / trans_consts.TILE_HEIGHT)
-        return row, col
+        return [row, col]
 
     def map_index_to_coord(self, index):
         """
@@ -355,7 +355,7 @@ class HomographyTransform():
         """
         x = self.__top_left_tile_x + index[1] * trans_consts.TILE_WIDTH + trans_consts.TILE_WIDTH / 2
         y = self.__top_left_tile_y + index[0] * trans_consts.TILE_HEIGHT + trans_consts.TILE_HEIGHT / 2
-        return x, y
+        return [x, y]
 
     def inv_transform_coord(self, coord):
         """
