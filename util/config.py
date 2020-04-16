@@ -76,6 +76,8 @@ class Config(object):
         self.validate()
         if (self.ok and not self.initialized):
             Logger.log_msg("Starting ALAuto!")
+            if self.combat['ignore_morale']:
+                Logger.log_warning("Ignore morale is enabled")
             self.initialized = True
             self.changed = True
         elif (not self.ok and not self.initialized):
@@ -115,6 +117,8 @@ class Config(object):
         self.combat['hide_subs_hunting_range'] = config.getboolean('Combat', 'HideSubsHuntingRange')
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
+        self.combat['ignore_morale'] = config.getboolean('Combat', 'IgnoreMorale')
+        self.combat['low_mood_sleep_time'] = float(config.get('Combat', 'LowMoodSleepTime'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
@@ -238,6 +242,10 @@ class Config(object):
             if map[0] != "E" and self.combat['small_boss_icon']:
                 self.ok = False
                 Logger.log_error("Story maps don't have small boss icon.")
+
+            if not isinstance(self.combat['low_mood_sleep_time'], float) or self.combat['low_mood_sleep_time'] < 0:
+                self.ok = False
+                Logger.log_error("LowMoodSleepTime must be a float > 0.")
 
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']

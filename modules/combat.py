@@ -140,10 +140,6 @@ class CombatModule(object):
                     self.stats.increment_combat_attempted()
                     break
                 Utils.wait_update_screen()
-            if Utils.find("menu/button_confirm"):
-                Logger.log_msg("Found commission info message.")
-                Utils.touch_randomly(self.region["combat_com_confirm"])
-                continue
             if Utils.find("menu/button_sort"):
                 if self.config.enhancement['enabled'] and not enhancement_failed:
                     if not self.enhancement_module.enhancement_logic_wrapper(forced=True):
@@ -165,9 +161,15 @@ class CombatModule(object):
                     self.exit = 4
                     break
             if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 3
-                break
+                if self.config.combat['ignore_morale']:
+                    Utils.find_and_touch("menu/button_confirm")
+                else:
+                    Utils.touch_randomly(self.region['close_info_dialog'])
+                    self.exit = 3
+                    break
+            if Utils.find("menu/button_confirm"):
+                Logger.log_msg("Found commission info message.")
+                Utils.touch_randomly(self.region["combat_com_confirm"])
             
         Utils.script_sleep(1)
         Utils.menu_navigate("menu/button_battle")
@@ -274,8 +276,11 @@ class CombatModule(object):
                     self.retreat_handler()
                     return False
             elif Utils.find("combat/alert_morale_low"):
-                self.retreat_handler()
-                return False
+                if self.config.combat['ignore_morale']:
+                    Utils.find_and_touch("menu/button_confirm")
+                else:
+                    self.retreat_handler()
+                    return False
             elif Utils.find("combat/combat_pause", 0.7):
                 Logger.log_warning("Loading screen was not found but combat pause is present, assuming combat is initiated normally.")
                 break
