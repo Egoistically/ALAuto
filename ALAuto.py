@@ -97,8 +97,8 @@ class ALAuto(object):
                 self.print_stats_check = True
             if result == 3:
                 # if morale is too low
-                Logger.log_warning("Ships morale is too low, entering standby mode for an hour.")
-                self.next_combat = datetime.now() + timedelta(hours=1)
+                Logger.log_warning("Ships morale is too low, entering standby mode for {} hour/s.".format(self.config.combat['low_mood_sleep_time']))
+                self.next_combat = datetime.now() + timedelta(hours=self.config.combat['low_mood_sleep_time'])
                 self.print_stats_check = False
             if result == 4:
                 # if dock is full
