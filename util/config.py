@@ -76,7 +76,7 @@ class Config(object):
         self.validate()
         if (self.ok and not self.initialized):
             Logger.log_msg("Starting ALAuto!")
-            if self.combat['ignore_morale']:
+            if self.combat['enabled'] and self.combat['ignore_morale']:
                 Logger.log_warning("Ignore morale is enabled")
             self.initialized = True
             self.changed = True
