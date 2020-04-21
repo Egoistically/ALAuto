@@ -211,7 +211,7 @@ class HeadquartersModule(object):
         else:
             x_coord = 630 + int(880 * percentage)
             y_coord = 400
-        return Utils.get_area_color_average(Region(x_coord, y_coord, 10, 10))
+        return Utils.get_region_color_average(Region(x_coord, y_coord, 10, 10))
 
     def get_dorm_bar_filled(self, percentage, corner_bar=False):
         return not self.get_dorm_bar_empty(percentage, corner_bar)

@@ -10,6 +10,7 @@ from scipy import spatial
 from util.adb import Adb
 from util.logger import Logger
 
+
 class Region(object):
     x, y, w, h = 0, 0, 0, 0
 
@@ -186,7 +187,8 @@ class Utils(object):
         color_screen = None
         while color_screen is None:
             if Adb.legacy:
-                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8), 1)
+                color_screen = cv2.imdecode(
+                    numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"), dtype=numpy.uint8), 1)
             else:
                 color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
         return color_screen
@@ -207,10 +209,10 @@ class Utils(object):
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
         if "rarity" in categories:
-            cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
+            cv2.rectangle(roi, (410, 647), (1835, 737), color=(255, 255, 255), thickness=-1)
         if "extra" in categories:
-            cv2.rectangle(roi, (410, 758), (1835, 847), color=(255,255,255), thickness=-1)
-        
+            cv2.rectangle(roi, (410, 758), (1835, 847), color=(255, 255, 255), thickness=-1)
+
         # preparing the ends of the interval of blue colors allowed, BGR format
         lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
         upper_blue = numpy.array([207, 142, 92], dtype=numpy.uint8)
@@ -233,12 +235,12 @@ class Utils(object):
             perimeter = cv2.arcLength(c, True)
             # approximates perimeter to a polygon with the specified precision
             approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
-    
+
             if len(approx) == 4:
                 # if approx is a rectangle, get bounding box
                 x, y, w, h = cv2.boundingRect(approx)
                 # print values
-                Logger.log_debug("Region x:{}, y:{}, w:{}, h:{}".format(x,y,w,h))
+                Logger.log_debug("Region x:{}, y:{}, w:{}, h:{}".format(x, y, w, h))
                 # appends to regions' list
                 regions.append(Region(x, y, w, h))
 
@@ -255,7 +257,7 @@ class Utils(object):
         cv2.imshow("targets", color_screen)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        return        
+        return
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -264,7 +266,7 @@ class Utils(object):
         """
         text = []
 
-        crop = screen[y:y+h, x:x+w]
+        crop = screen[y:y + h, x:x + w]
         crop = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         thresh = cv2.threshold(crop, 0, 255, cv2.THRESH_OTSU)[1]
 
@@ -284,9 +286,10 @@ class Utils(object):
 
             width = round(abs((50 - col)) / 2) + 5
             height = round(abs((94 - row)) / 2) + 5
-            resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
+            resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width,
+                                         borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
-            for x in range(0,10):
+            for x in range(0, 10):
                 template = cv2.imread("assets/numbers/{}.png".format(x), 0)
 
                 result = cv2.matchTemplate(resized, template, cv2.TM_CCOEFF_NORMED)
@@ -394,7 +397,7 @@ class Utils(object):
             upperEnd = 0.6
 
         # preparing interpolation methods        
-        middle_range = (upperEnd + lowerEnd)/2.0
+        middle_range = (upperEnd + lowerEnd) / 2.0
         if lowerEnd < 1 and upperEnd > 1 and middle_range == 1:
             l_interpolation = cv2.INTER_AREA
             u_interpolation = cv2.INTER_CUBIC
@@ -411,7 +414,7 @@ class Utils(object):
         results_list = []
         regions_detected = []
         count = 0
-        loop_limiter = (middle_range - lowerEnd)*100
+        loop_limiter = (middle_range - lowerEnd) * 100
 
         # creating and launching worker processes
         pool = ThreadPool(processes=4)
@@ -420,12 +423,12 @@ class Utils(object):
             l_result = pool.apply_async(cls.resize_and_match, (template, lowerEnd, similarity, l_interpolation))
             u_result = pool.apply_async(cls.resize_and_match, (template, upperEnd, similarity, u_interpolation))
             cls.script_sleep(0.01)
-            lowerEnd+=0.02
-            upperEnd-=0.02
-            count +=1
+            lowerEnd += 0.02
+            upperEnd -= 0.02
+            count += 1
             results_list.append(l_result)
             results_list.append(u_result)
-        
+
         # closing pool and waiting for results
         pool.close()
         pool.join()
@@ -435,7 +438,7 @@ class Utils(object):
             if results_list[i].get() is not None:
                 regions_detected.append(results_list[i].get())
 
-        if (len(regions_detected)>0):
+        if (len(regions_detected) > 0):
             return regions_detected[0]
         else:
             return None
@@ -463,7 +466,7 @@ class Utils(object):
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
-        
+
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
@@ -494,23 +497,23 @@ class Utils(object):
     @classmethod
     def find_siren_elites(cls):
         color_screen = cls.get_color_screen()
-        
+
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
-        
+
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170,100,100])
-        upper_red = numpy.array([180,255,255])
+        lower_red = numpy.array([170, 100, 100])
+        upper_red = numpy.array([180, 255, 255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
         ret, thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)
-        
+
         # Build a structuring element to combine nearby contours together.
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
         im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
-        
+
         locations = []
         for contour in contours:
             hull = cv2.convexHull(contour)
@@ -520,7 +523,7 @@ class Utils(object):
             approx = cv2.approxPolyDP(hull, 0.04 * cv2.arcLength(contour, True), True)
             bound_x, bound_y, width, height = cv2.boundingRect(approx)
             aspect_ratio = width / float(height)
-    
+
             # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
             if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.05:
                 locations.append([x, y])
@@ -529,22 +532,23 @@ class Utils(object):
 
     @classmethod
     def match_resize(cls, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
-        template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
-        if useMask: 
-            mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
+        template_resize = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+        if useMask:
+            mask_resize = cv2.resize(mask, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
         else:
             mask_resize = None
         match_resize = cv2.matchTemplate(screen, template_resize, comparison_method, mask=mask_resize)
         return numpy.where(match_resize >= similarity)
 
     @classmethod
-    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
-        template_resize = cv2.resize(templateImage, None, fx = scale, fy = scale, interpolation = interpolationMethod)
+    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY,
+                         interpolationMethod=cv2.INTER_NEAREST):
+        template_resize = cv2.resize(templateImage, None, fx=scale, fy=scale, interpolation=interpolationMethod)
         width, height = template_resize.shape[::-1]
         match = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
         if (value >= similarity):
-             return Region(location[0], location[1], width, height)
+            return Region(location[0], location[1], width, height)
 
     @classmethod
     def touch(cls, coords):
@@ -671,7 +675,7 @@ class Utils(object):
         return spatial.KDTree(coords).query(coord)
 
     @classmethod
-    def get_area_color_average(cls, region, hsv=True):
+    def get_region_color_average(cls, region, hsv=True):
         """
         Get the average color in the region
         :param region: the region to average the color
