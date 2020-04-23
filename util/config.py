@@ -34,7 +34,36 @@ class Config(object):
         self.assets = {}
         self.read()
 
+    def try_cast_to_int(self, val):
+        """Helper function that attempts to coerce the val to an int,
+        returning the val as-is the cast fails
+        Args:
+            val (string): string to attempt to cast to int
+        Returns:
+            int, str: int if the cast was successful; the original str
+                representation otherwise
+        """
+        try:
+            return int(val)
+        except ValueError:
+            return val
+
+    def try_cast_to_float(self, val):
+        """Helper function that attempts to coerce the val to a float,
+        returning the val as-is the cast fails
+        Args:
+            val (string): string to attempt to cast to float
+        Returns:
+            float, str: float if the cast was successful; the original str
+                representation otherwise
+        """
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
     def read(self):
+
         backup_config = deepcopy(self.__dict__)
         config = configparser.ConfigParser()
         config.read(self.config_file)
@@ -106,11 +135,11 @@ class Config(object):
         """
         self.combat['enabled'] = True
         self.combat['map'] = config.get('Combat', 'Map')
-        self.combat['kills_before_boss'] = int(config.get('Combat', 'KillsBeforeBoss'))
+        self.combat['kills_before_boss'] = self.try_cast_to_int(config.get('Combat', 'KillsBeforeBoss'))
         self.combat['boss_fleet'] = config.getboolean('Combat', 'BossFleet')
-        self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
-        self.combat['retire_cycle'] = int(config.get('Combat', 'RetireCycle'))
-        self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
+        self.combat['oil_limit'] = self.try_cast_to_int(config.get('Combat', 'OilLimit'))
+        self.combat['retire_cycle'] = self.try_cast_to_int(config.get('Combat', 'RetireCycle'))
+        self.combat['retreat_after'] = self.try_cast_to_int(config.get('Combat', 'RetreatAfter'))
         self.combat['ignore_mystery_nodes'] = config.getboolean('Combat', 'IgnoreMysteryNodes')
         self.combat['focus_on_mystery_nodes'] = config.getboolean('Combat', 'FocusOnMysteryNodes')
         self.combat['clearing_mode'] = config.getboolean('Combat', 'ClearingMode')
@@ -118,7 +147,7 @@ class Config(object):
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
         self.combat['ignore_morale'] = config.getboolean('Combat', 'IgnoreMorale')
-        self.combat['low_mood_sleep_time'] = float(config.get('Combat', 'LowMoodSleepTime'))
+        self.combat['low_mood_sleep_time'] = self.try_cast_to_float(config.get('Combat', 'LowMoodSleepTime'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
@@ -128,7 +157,7 @@ class Config(object):
         self.dorm['enabled'] = config.getboolean('Headquarters', 'Dorm')
         self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
         if self.academy['enabled']:
-            self.academy['skill_book_tier'] = int(config.get('Headquarters', 'SkillBookTier'))
+            self.academy['skill_book_tier'] = self.try_cast_to_int(config.get('Headquarters', 'SkillBookTier'))
 
     def _read_enhancement(self, config):
         """Method to parse the Enhancement settings of the passed in config.
@@ -171,24 +200,10 @@ class Config(object):
         self.events['ignore_rateup'] = config.getboolean('Events', 'IgnoreRateUp')
 
     def validate(self):
-        def try_cast_to_int(val):
-            """Helper function that attempts to coerce the val to an int,
-            returning the val as-is the cast fails
-            Args:
-                val (string): string to attempt to cast to int
-            Returns:
-                int, str: int if the cast was successful; the original str
-                    representation otherwise
-            """
-            try:
-                return int(val)
-            except ValueError:
-                return val
-
         """Method to validate the passed in config file
         """
         if not self.initialized:
-            Logger.log_msg("Validating config")
+          Logger.log_msg("Validating config")
         self.ok = True
 
         valid_servers = ['EN', 'JP']
@@ -239,6 +254,10 @@ class Config(object):
                 self.ok = False
                 Logger.log_error("Invalid KillsBeforeBoss value: must be an integer >= 0.")
 
+            if not isinstance(self.combat['retreat_after'], int) or self.combat['retreat_after'] < 0:
+                self.ok = False
+                Logger.log_error("Invalid RetreatAfter value: must be an integer >= 0.")
+
             if map[0] != "E" and self.combat['small_boss_icon']:
                 self.ok = False
                 Logger.log_error("Story maps don't have small boss icon.")
@@ -246,6 +265,11 @@ class Config(object):
             if not isinstance(self.combat['low_mood_sleep_time'], float) or self.combat['low_mood_sleep_time'] < 0:
                 self.ok = False
                 Logger.log_error("LowMoodSleepTime must be a float > 0.")
+
+        if self.academy['enabled']:
+            tier = self.academy['skill_book_tier']
+            if not isinstance(tier, int) or not 1 <= tier <= 3:
+                Logger.log_error("Skill book tier must be an integer between 1 and 3.")
 
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']
@@ -263,6 +287,7 @@ class Config(object):
             if not (self.research['30Minutes'] or self.research['1Hour'] or self.research['1Hour30Minutes'] or self.research['2Hours'] or self.research['2Hours30Minutes'] or self.research['4Hours'] or self.research['5Hours'] or self.research['6Hours'] or self.research['8Hours'] or self.research['12Hours']):
                 Logger.log_error("Research is enabled, but without allowed times.")
                 self.ok = False
+
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.
