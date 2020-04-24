@@ -5,11 +5,9 @@ from util.logger import Logger
 class UpdateUtil(object):
 
     def __init__(self, config):
-        """Initializes the Enhancement module.
-
+        """ Utility for checking if there exists newer version of bot
         Args:
             config (Config): ALAuto Config instance
-            stats (Stats): ALAuto stats instance
         """
         self.config = config
 
