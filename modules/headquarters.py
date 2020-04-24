@@ -34,8 +34,22 @@ class HeadquartersModule(object):
             'start_lesson_button': Region(1660, 900, 150, 60),
             'cancel_lesson_button': Region(1345, 900, 170, 60)
         }
-        self.supplies = ["headquarters/supply_cola", "headquarters/supply_coolant", "headquarters/supply_tempura", "headquarters/supply_curry"]
-        self.supplies.reverse()
+
+        self.supply_region = list()
+        self.supply_order = list()
+        self.supply_whiteout_threshold = 220
+        self.start_feed_threshold = 0.2
+        self.stop_feed_threshold = 0.8
+
+        gap = 235
+        supplies = [1000, 2000, 3000, 5000, 10000, 20000]
+
+        for i in range(6):
+            self.supply_region.append(Region(450 + i * gap, 520, 100, 100))
+        for val in config.dorm['AvailableSupplies']:
+            self.supply_order.append(supplies.index(val))
+
+
 
     def hq_logic_wrapper(self):
         """Method that fires off the necessary child methods that encapsulates
@@ -170,7 +184,7 @@ class HeadquartersModule(object):
                 # dismiss notification by tapping ignore
                 Utils.touch_randomly(self.region["ignore_give_food_button"])
                 continue
-            if self.get_dorm_bar_empty(0.2, True):
+            if self.get_dorm_bar_empty(self.start_feed_threshold, True):
                 # proceed to refill
                 self.feed_snacks()
                 break
@@ -185,17 +199,19 @@ class HeadquartersModule(object):
         Utils.update_screen()
         alert_found = Utils.find("menu/alert_close")
         retry_counter = 0
-        while retry_counter < 40 and self.get_dorm_bar_empty(0.8) and not alert_found:
+        while retry_counter < 40 and self.get_dorm_bar_empty(self.stop_feed_threshold) and not alert_found:
             retry_counter += 1
             find_food = False
-            for food in self.supplies:
-                if Utils.find_and_touch(food, similarity=0.99, color=True):
+            for idx in self.supply_order:
+                region = self.supply_region[idx]
+                if Utils.get_region_color_average(region)[2] < self.supply_whiteout_threshold:
+                    Utils.touch_randomly(region)
                     find_food = True
                     break
             if not find_food:
                 break
             else:
-                Utils.wait_update_screen(1)
+                Utils.wait_update_screen(0.5)
                 alert_found = Utils.find("menu/alert_close")
 
         if alert_found:

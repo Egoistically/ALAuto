@@ -126,6 +126,10 @@ class Config(object):
             config (ConfigParser): ConfigParser instance
         """
         self.dorm['enabled'] = config.getboolean('Headquarters', 'Dorm')
+        if self.dorm['enabled']:
+            self.dorm['AvailableSupplies'] = self._validate_list(config.get('Headquarters', 'AvailableSupplies'),
+                                                                 valid_vals=[1000, 2000, 3000, 5000, 10000, 20000],
+                                                                 min_len=1, max_len=5, cast=int, unique=True)
         self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
         if self.academy['enabled']:
             self.academy['skill_book_tier'] = int(config.get('Headquarters', 'SkillBookTier'))
@@ -200,7 +204,8 @@ class Config(object):
             self.ok = False
 
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
-           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.research['enabled'] and not self.events['enabled']:
+           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.research['enabled'] \
+            and not self.events['enabled'] and not self.dorm['enabled'] and not self.academy['enabled']:
             Logger.log_error("All modules are disabled, consider checking your config.")
             self.ok = False
 
@@ -263,6 +268,28 @@ class Config(object):
             if not (self.research['30Minutes'] or self.research['1Hour'] or self.research['1Hour30Minutes'] or self.research['2Hours'] or self.research['2Hours30Minutes'] or self.research['4Hours'] or self.research['5Hours'] or self.research['6Hours'] or self.research['8Hours'] or self.research['12Hours']):
                 Logger.log_error("Research is enabled, but without allowed times.")
                 self.ok = False
+
+    def _validate_list(self, val, min_len=None, max_len=None, valid_vals=None, cast=None, unique=False):
+        s_list = val.split()
+
+        if min_len is not None and len(s_list) < min_len:
+            raise ValueError()
+        if max_len is not None and len(s_list) > max_len:
+            raise ValueError()
+        if s_list is not None:
+            for i in range(len(s_list)):
+                s_list[i] = cast(s_list[i])
+        if valid_vals is not None:
+            for v in s_list:
+                if v not in valid_vals:
+                    raise ValueError()
+        if unique and len(set(s_list)) != len(s_list):
+            raise ValueError()
+
+        return s_list
+
+
+
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.
