@@ -269,6 +269,14 @@ class Config(object):
                 Logger.log_error("Research is enabled, but without allowed times.")
                 self.ok = False
 
+    def _rollback_config(self, config):
+        """Method to roll back the config to the passed in config's.
+        Args:
+            config (dict): previously backed up config
+        """
+        for key in config:
+            setattr(self, key, config['key'])
+
     def _validate_list(self, val, min_len=None, max_len=None, valid_vals=None, cast=None, unique=False):
         s_list = val.split()
 
@@ -287,14 +295,3 @@ class Config(object):
             raise ValueError()
 
         return s_list
-
-
-
-
-    def _rollback_config(self, config):
-        """Method to roll back the config to the passed in config's.
-        Args:
-            config (dict): previously backed up config
-        """
-        for key in config:
-            setattr(self, key, config['key'])
