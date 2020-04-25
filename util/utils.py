@@ -511,7 +511,7 @@ class Utils(object):
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
-        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
 
         locations = []
