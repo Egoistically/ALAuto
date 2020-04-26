@@ -32,6 +32,7 @@ class Config(object):
         self.events = {'enabled': False}
         self.network = {}
         self.assets = {}
+        self.screenshot = {}
         self.read()
 
     def try_cast_to_int(self, val):
@@ -68,6 +69,7 @@ class Config(object):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
+        self.screenshot['useAScreenCap'] = config.getboolean('Screenshot', 'useAScreenCap')
         self.assets['server'] = config.get('Assets', 'Server')
 
         if config.getboolean('Updates', 'Enabled'):
