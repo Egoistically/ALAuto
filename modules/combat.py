@@ -577,13 +577,7 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
-            'E-A2': lambda: Utils.swipe(960, 540, 960, 580, 300),
-            'E-A3': lambda: Utils.swipe(960, 540, 960, 500, 300),
-            'E-B3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
-            'E-C2': lambda: Utils.swipe(960, 540, 960, 580, 300),
-            'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 300),
-            'E-D3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
-            '7-2': lambda: Utils.swipe(960, 540, 400, 600, 300),
+            # needs to be updated
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
             '12-4': lambda: Utils.swipe(960, 300, 960, 540, 300),
@@ -592,7 +586,7 @@ class CombatModule(object):
             '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 300),
             '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 300)
         }
-        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 450, 540, 300))()
+        swipes.get(self.chapter_map, lambda: None)()
 
         # disable subs' hunting range
         if self.config.combat["hide_subs_hunting_range"]:
@@ -666,7 +660,9 @@ class CombatModule(object):
 
                     # swipe to center the boss fleet on the screen
                     # first calculate the translation vector coordinates
-                    horizontal_translation = 150 if boss_region.x < 960 else - 150
+                    translation_sign = 1 if boss_region.x < 960 else -1
+                    translation_module = 175 if boss_region.y > 300 else 75
+                    horizontal_translation = translation_sign * translation_module
                     angular_coefficient = -1 * ((540 - boss_region.y)/(960 - boss_region.x))
                     Utils.swipe(boss_region.x + horizontal_translation, boss_region.y + int(horizontal_translation * angular_coefficient), 
                         960 + horizontal_translation, 540 + int(horizontal_translation * angular_coefficient), 300)
@@ -884,7 +880,7 @@ class CombatModule(object):
 
     def filter_blacklist(self, coord, blacklist):
         for y in blacklist:
-            if abs(coord[0] - y[0]) < 40 and abs(coord[1] - y[1]) < 40:
+            if abs(coord[0] - y[0]) < 65 and abs(coord[1] - y[1]) < 65:
                 return True
         return False
 
