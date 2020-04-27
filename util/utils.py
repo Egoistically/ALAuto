@@ -3,12 +3,12 @@ import numpy
 import time
 import lz4.block
 from imutils import contours, grab_contours
-from multiprocessing.pool import ThreadPool
 from datetime import datetime, timedelta
 from random import uniform, gauss, randint
 from scipy import spatial
 from util.adb import Adb
 from util.logger import Logger
+from threading import Thread
 
 class Region(object):
     x, y, w, h = 0, 0, 0, 0
@@ -372,34 +372,19 @@ class Utils(object):
             u_interpolation = cv2.INTER_NEAREST
 
         results_list = []
-        regions_detected = []
         count = 0
         loop_limiter = (middle_range - lowerEnd)*100
 
-        # creating and launching worker processes
-        pool = ThreadPool(processes=4)
-
+        thread_list = []
         while (upperEnd > lowerEnd) and (count < loop_limiter):
-            l_result = pool.apply_async(cls.resize_and_match, (template, lowerEnd, similarity, l_interpolation))
-            u_result = pool.apply_async(cls.resize_and_match, (template, upperEnd, similarity, u_interpolation))
-            cls.script_sleep(0.01)
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, lowerEnd, similarity, l_interpolation)))
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, upperEnd, similarity, u_interpolation)))
             lowerEnd+=0.02
             upperEnd-=0.02
             count +=1
-            results_list.append(l_result)
-            results_list.append(u_result)
-        
-        # closing pool and waiting for results
-        pool.close()
-        pool.join()
-
-        # extract regions from async_result
-        for i in range(0, len(results_list)):
-            if results_list[i].get() is not None:
-                regions_detected.append(results_list[i].get())
-
-        if (len(regions_detected)>0):
-            return regions_detected[0]
+        cls.multithreader(thread_list)
+        if results_list:
+            return results_list[0]
         else:
             return None
 
@@ -431,25 +416,16 @@ class Utils(object):
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
 
-        pool = ThreadPool(processes=4)
-        count = 1.20
-        results_list = []
-
-        while (len(cls.locations[0]) < 1) and (count > 0.80):
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            count -= 0.02
-            results_list.append(result)
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            cls.script_sleep(0.01)
-            count -= 0.02
-            results_list.append(result)
-
-        pool.close()
-        pool.join()
-
-        # extracting locations from pool's results
-        for i in range(0, len(results_list)):
-            cls.locations = numpy.append(cls.locations, results_list[i].get(), axis=1)
+        if len(cls.locations[0]) < 1:
+            count = 1.20
+            thread_list = []
+            results_list = []
+            while count > 0.80:
+                thread_list.append(Thread(target=cls.match_resize, args=(results_list,template,count,comparison_method,similarity,useMask,mask)))
+                count -= 0.02
+            Utils.multithreader(thread_list)
+            for i in range(0, len(results_list)):
+                cls.locations = numpy.append(cls.locations, results_list[i], axis=1)
 
         return cls.filter_similar_coords(
             list(zip(cls.locations[1], cls.locations[0])))
@@ -491,23 +467,23 @@ class Utils(object):
         return cls.filter_similar_coords(locations)
 
     @classmethod
-    def match_resize(cls, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
+    def match_resize(cls, results_list, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         if useMask: 
             mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         else:
             mask_resize = None
         match_resize = cv2.matchTemplate(screen, template_resize, comparison_method, mask=mask_resize)
-        return numpy.where(match_resize >= similarity)
+        results_list.append(numpy.where(match_resize >= similarity))
 
     @classmethod
-    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
+    def resize_and_match(cls, results_list, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
         template_resize = cv2.resize(templateImage, None, fx = scale, fy = scale, interpolation = interpolationMethod)
         width, height = template_resize.shape[::-1]
         match = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
         if (value >= similarity):
-             return Region(location[0], location[1], width, height)
+            results_list.append(Region(location[0], location[1], width, height))
 
     @classmethod
     def touch(cls, coords):
