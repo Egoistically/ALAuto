@@ -3,9 +3,7 @@ import string
 from datetime import datetime, timedelta
 from util.logger import Logger
 from util.utils import Region, Utils
-from scipy import spatial
 from threading import Thread
-#import cv2
 
 class CombatModule(object):
 
@@ -577,6 +575,8 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
+            'E-B3': lambda: Utils.swipe(960, 540, 1060, 670, 300),
+            'E-D3': lambda: Utils.swipe(960, 540, 1060, 670, 300),
             # needs to be updated
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
@@ -615,7 +615,10 @@ class CombatModule(object):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:
-                    s = 0
+                    if self.chapter_map == 'E-B3' or self.chapter_map == 'E-D3':
+                        s = 3
+                    else:
+                        s = 0
                     swipes = {
                         0: lambda: Utils.swipe(960, 240, 960, 940, 300),
                         1: lambda: Utils.swipe(1560, 540, 260, 540, 300),
@@ -627,36 +630,12 @@ class CombatModule(object):
                     Utils.wait_update_screen(2)
                     boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
 
-                    if self.chapter_map == 'E-B3' or self.chapter_map == 'E-D3':
-                        # sometimes the fleet marker blocks the view of the boss icon
-                        # moving the boss fleet first to the right and then to the left
-                        # to get a clear view of the boss
-                        counter = 1
-                        self.fleet_location = [960, 540]
-                        while not boss_region:
-                            if counter % 2 != 0:
-                                Utils.touch([self.fleet_location[0] + (counter % 5) * 200, self.fleet_location[1]])
-                                self.fleet_location[0] += (counter % 5) * 200
-                            else:
-                                Utils.touch([self.fleet_location[0] - (counter % 5) * 200, self.fleet_location[1]])
-                                self.fleet_location[0] -= (counter % 5) * 200
-
-                            Utils.wait_update_screen()
-                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
-                            counter += 1
-                            if counter == 5: counter += 1
-                            if counter == 10:
-                                # back to starting position
-                                counter = 1
-                                self.fleet_location = [960, 540]
-                    else:
-                        while not boss_region:
-                            if s > 3: s = 0
-                            swipes.get(s)()
-
-                            Utils.wait_update_screen(0.5)
-                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
-                            s += 1
+                    while not boss_region:
+                        if s > 3: s = 0
+                        swipes.get(s)()
+                        Utils.wait_update_screen(0.5)
+                        boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
+                        s += 1
 
                     # swipe to center the boss fleet on the screen
                     # first calculate the translation vector coordinates
@@ -767,27 +746,18 @@ class CombatModule(object):
                     base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt3', sim - 0.075, useMask=True))
                 lv_enemies = list(map(lambda coords: Region(coords[0].item() + base_region_level.x, coords[1].item() + base_region_level.y,
                     base_region_level.w, base_region_level.h), Utils.find_all('enemy/enemylv', sim - 0.04, useMask=True)))
-                #screen = Utils.get_color_screen()
                 t1_enemies = []
                 for st in single_triangle:
-                    #Utils.draw_region(screen, st, (0,255,0), 2)
                     t1_enemies.extend(map(st.intersection, lv_enemies))
                 t1_enemies = filter(None, t1_enemies)
                 t2_enemies = []
                 for dt in double_triangle:
-                    #Utils.draw_region(screen, dt, (0,255,0), 2)
                     t2_enemies.extend(map(dt.intersection, lv_enemies))
                 t2_enemies = filter(None, t2_enemies)
                 t3_enemies = []
                 for tt in triple_triangle:
-                    #Utils.draw_region(screen, tt, (0,255,0), 2)
                     t3_enemies.extend(map(tt.intersection, lv_enemies))
                 t3_enemies = filter(None, t3_enemies)
-                #for lv in lv_enemies:
-                #Utils.draw_region(screen, lv, (255,0,0), 2)
-                #cv2.imshow("combat", screen)
-                #cv2.waitKey(0)
-                #cv2.destroyAllWindows()
 
                 intersections = []
                 intersections.extend(t1_enemies)

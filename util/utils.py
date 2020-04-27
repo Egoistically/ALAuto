@@ -537,7 +537,7 @@ class Utils(object):
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
         
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170,100,100])
+        lower_red = numpy.array([170,100,180])
         upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
@@ -547,7 +547,8 @@ class Utils(object):
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
-        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = grab_contours(cnts)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
         
         locations = []
@@ -561,7 +562,7 @@ class Utils(object):
             aspect_ratio = width / float(height)
     
             # filter out non-Siren matches (non-squares)
-            if len(approx) == 4 and aspect_ratio >= 1.05:
+            if len(approx) == 4 and 170 <= width <= 230 and 80 <= height <= 180:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)
