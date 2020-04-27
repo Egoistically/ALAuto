@@ -286,13 +286,15 @@ class CombatModule(object):
                     if not self.retirement_module.retirement_logic_wrapper(forced=True):
                         retirement_failed = True
                 else:
-                    self.retreat_handler()
+                    self.exit = 3
+                    Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/alert_morale_low"):
                 if self.config.combat['ignore_morale']:
                     Utils.find_and_touch("menu/button_confirm")
                 else:
-                    self.retreat_handler()
+                    self.exit = 2
+                    Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/combat_pause", 0.7):
                 Logger.log_warning("Loading screen was not found but combat pause is present, assuming combat is initiated normally.")
@@ -359,8 +361,6 @@ class CombatModule(object):
                     items_received = True
                     confirmed_fight = True
                     Utils.touch_randomly(self.region["combat_end_confirm"])
-                    if boss:
-                        return True
                     Utils.wait_update_screen(3)
                 if (not confirmed_fight) and Utils.find("combat/commander"):
                     items_received = True
@@ -381,6 +381,9 @@ class CombatModule(object):
                         self.mystery_nodes_list.clear()
                         self.blacklist.clear()
                         Utils.script_sleep(3)
+                        if boss:
+                            self.exit = 5
+                            return False
                         continue
                     else:
                         # flagship sunk, but part of backline still remains
@@ -392,7 +395,7 @@ class CombatModule(object):
                     Logger.log_msg("Found commission info message.")
                     Utils.touch_randomly(self.region["combat_com_confirm"])
                     continue
-                if confirmed_fight and Utils.find("combat/button_retreat"):
+                if confirmed_fight and (not boss) and Utils.find("combat/button_retreat"):
                     #Utils.touch_randomly(self.region["hide_strat_menu"])
                     if confirmed_fleet_switch:
                         # if fleet was defeated and it has now been switched
@@ -408,6 +411,9 @@ class CombatModule(object):
                     Logger.log_debug("Fleet was defeated.")
                     defeat = True
                     Utils.script_sleep(3)
+                if boss and confirmed_fight:
+                    if not defeat:
+                        return True
 
     def movement_handler(self, target_info):
         """
@@ -527,29 +533,28 @@ class CombatModule(object):
     def retreat_handler(self):
         """ Retreats if necessary.
         """
-        while True:
-            Utils.wait_update_screen(2)
 
-            if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 3
-                continue
-            if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 4
-                continue
+        force_retreat = True if self.exit != 1 else False
+        pressed_retreat_button = False
+
+        while True:
+            Utils.update_screen()
+
             if Utils.find("combat/menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
+                Utils.script_sleep(1)
                 continue
-            if Utils.find("combat/button_retreat"):
+            if force_retreat and (not pressed_retreat_button) and Utils.find("combat/button_retreat"):
+                Logger.log_msg("Retreating...")
                 Utils.touch_randomly(self.region['retreat_button'])
+                pressed_retreat_button = True
+                Utils.script_sleep(1)
                 continue
-            if Utils.find("menu/button_confirm"):
-                Utils.touch_randomly(self.region['combat_com_confirm'])
+            if Utils.find_and_touch("menu/button_confirm"):
+                # confirm either the retreat or an urgent commission alert
+                Utils.script_sleep(1)
                 continue
             if Utils.find("menu/attack"):
-                if self.exit != 1 and self.exit != 2 and self.exit != 5:
-                    Logger.log_msg("Retreating...")
                 return
 
     def clear_map(self):
@@ -727,6 +732,9 @@ class CombatModule(object):
                 if self.battle_handler(boss=True):
                     self.exit = 1
                     Logger.log_msg("Boss successfully defeated.")
+                else:
+                    self.exit = 5
+                    Logger.log_warning("Fleet defeated by boss.")
                 Utils.script_sleep(3)
                 return
 
