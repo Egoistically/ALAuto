@@ -44,6 +44,30 @@ class Region(object):
         return (valid_x[0] <= region.x <= valid_x[1]  and valid_y[0] <= region.y <= valid_y[1] and
             valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
 
+    def intersection(self, other):
+        """Checks if there is an intersection between the two regions,
+        and if that is the case, returns it.
+        Taken from https://stackoverflow.com/a/25068722
+
+        Args:
+            other (Region): The region to intersect with.
+        
+        Returns:
+            intersection (Region) or None.
+        """
+        a = (self.x, self.y, self.x+self.w, self.y+self.h)
+        b = (other.x, other.y, other.x+other.w, other.y+other.h)
+        x1 = max(min(a[0], a[2]), min(b[0], b[2]))
+        y1 = max(min(a[1], a[3]), min(b[1], b[3]))
+        x2 = min(max(a[0], a[2]), max(b[0], b[2]))
+        y2 = min(max(a[1], a[3]), max(b[1], b[3]))
+        if x1<x2 and y1<y2:
+            return type(self)(x1, y1, x2-x1, y2-y1)
+
+    def get_center(self):
+        """Calculate and returns the center of this region."""
+        return [(self.x * 2 + self.w)//2, (self.y * 2 + self.h)//2]
+
 screen = None
 last_ocr = ''
 bytepointer = 0
@@ -161,6 +185,23 @@ class Utils(object):
         return color_screen
 
     @classmethod
+    def get_mask_from_alpha(cls, image):
+        """Calculate the mask of the specified image from its alpha channel.
+        The mask returned is a binary image, where the transparent pixels have been blacked.
+
+        Args:
+            image (string): image to load and use to calculate the mask.
+
+        Returns:
+            mask (numpy array): binary image obtained from the source image's alpha channel.
+        """
+        source = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), cv2.IMREAD_UNCHANGED)
+        # split into BGRA and get A
+        alpha_channel = cv2.split(source)[3]
+        ret, thresh = cv2.threshold(alpha_channel, 0, 255, cv2.THRESH_BINARY)
+        return thresh
+
+    @classmethod
     def get_enabled_ship_filters(cls, filter_categories="rarity"):
         """Method which returns the regions of all the options enabled for the current sorting filter.
 
@@ -224,7 +265,21 @@ class Utils(object):
         cv2.imshow("targets", color_screen)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        return        
+        return
+    
+    @staticmethod
+    def draw_region(screen, region, color, thickness):
+        """Method which draws a region (a rectangle) on the image (screen) passed as argument.
+
+        Args:
+            screen (numpy array): image to draw on.
+            region (Region): rectangle which needs to be drawn.
+            color (tuple): specifiy the color of the rectangle's lines.
+            thickness (int): specify the thickness of the rectangle's lines (-1 for it to be filled).
+        
+        See cv2.rectangle() docs.
+        """
+        cv2.rectangle(screen, (region.x, region.y), (region.x+region.w, region.y+region.h), color=color, thickness=thickness)
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -407,7 +462,41 @@ class Utils(object):
 
         if useMask:
             comparison_method = cv2.TM_CCORR_NORMED
-            mask = cv2.imread('assets/{}/{}_mask.png'.format(cls.assets, image), 0)
+            mask = cls.get_mask_from_alpha(image)
+        else:
+            comparison_method = cv2.TM_CCOEFF_NORMED
+            mask = None
+        
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
+        match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
+        cls.locations = numpy.where(match >= similarity)
+
+        return cls.filter_similar_coords(
+            list(zip(cls.locations[1], cls.locations[0])))
+
+    @classmethod
+    def find_all_with_resize(cls, image, similarity=DEFAULT_SIMILARITY, useMask=False):
+        """Finds all locations of the image at default size on the screen.
+        If nothing is found, the method proceeds to resize the image within the 
+        scaling range of (0.8, 1.2) with a step interval of 0.2 and repeats
+        the template matching operation for each resized images.
+
+        Args:
+            image (string): Name of the image.
+            similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
+                Percentage in similarity that the image should at least match.
+            useMask (boolean, optional): Defaults to False.
+                If set to True, this function uses a different comparison method and
+                a mask when searching for match.
+
+        Returns:
+            array: Array of all coordinates where the image appears
+        """
+        del cls.locations
+
+        if useMask:
+            comparison_method = cv2.TM_CCORR_NORMED
+            mask = cls.get_mask_from_alpha(image)
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
@@ -573,21 +662,23 @@ class Utils(object):
         return randint(min_val, max_val)
 
     @classmethod
-    def filter_similar_coords(cls, coords):
+    def filter_similar_coords(cls, coords, distance=50):
         """Filters out coordinates that are close to each other.
 
         Args:
             coords (array): An array containing the coordinates to be filtered.
+            distance (int): minimum distance at which two set of coordinates
+                are no longer considered close.
 
         Returns:
             array: An array containing the filtered coordinates.
         """
-        Logger.log_debug("Coords: " + str(coords))
+        #Logger.log_debug("Coords: " + str(coords))
         filtered_coords = []
         if len(coords) > 0:
             filtered_coords.append(coords[0])
             for coord in coords:
-                if cls.find_closest(filtered_coords, coord)[0] > 50:
+                if cls.find_closest(filtered_coords, coord)[0] > distance:
                     filtered_coords.append(coord)
         Logger.log_debug("Filtered Coords: " + str(filtered_coords))
         return filtered_coords
@@ -606,4 +697,4 @@ class Utils(object):
             in the list of coordinates to the specified coordinate as well the
             index of where it is in the list of coordinates
         """
-        return spatial.KDTree(coords).query(coord)
+        return spatial.cKDTree(coords).query(coord)

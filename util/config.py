@@ -150,6 +150,7 @@ class Config(object):
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
         self.combat['ignore_morale'] = config.getboolean('Combat', 'IgnoreMorale')
         self.combat['low_mood_sleep_time'] = self.try_cast_to_float(config.get('Combat', 'LowMoodSleepTime'))
+        self.combat['search_mode'] = int(config.get('Combat', 'SearchMode'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
@@ -268,6 +269,10 @@ class Config(object):
                 self.ok = False
                 Logger.log_error("LowMoodSleepTime must be a float > 0.")
 
+            if self.combat['search_mode'] not in [0, 1]:
+                self.ok = False
+                Logger.log_error("Wrong search mode. Allowed values: [0, 1].")
+
         if self.academy['enabled']:
             tier = self.academy['skill_book_tier']
             if not isinstance(tier, int) or not 1 <= tier <= 3:
@@ -289,7 +294,6 @@ class Config(object):
             if not (self.research['30Minutes'] or self.research['1Hour'] or self.research['1Hour30Minutes'] or self.research['2Hours'] or self.research['2Hours30Minutes'] or self.research['4Hours'] or self.research['5Hours'] or self.research['6Hours'] or self.research['8Hours'] or self.research['12Hours']):
                 Logger.log_error("Research is enabled, but without allowed times.")
                 self.ok = False
-
 
     def _rollback_config(self, config):
         """Method to roll back the config to the passed in config's.

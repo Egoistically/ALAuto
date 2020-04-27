@@ -5,6 +5,7 @@ from util.logger import Logger
 from util.utils import Region, Utils
 from scipy import spatial
 from threading import Thread
+#import cv2
 
 class CombatModule(object):
 
@@ -22,6 +23,7 @@ class CombatModule(object):
         self.stats = stats
         self.retirement_module = retirement_module
         self.enhancement_module = enhancement_module
+        self.use_intersection = True if self.config.combat['search_mode'] == 1 else False
         self.chapter_map = self.config.combat['map']
         Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
@@ -726,7 +728,7 @@ class CombatModule(object):
                 self.enemies_list.clear()
 
         while not self.enemies_list:
-            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.97:
+            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.985:
                 if self.swipe_counter > 3: self.swipe_counter = 0
                 swipes = {
                     0: lambda: Utils.swipe(960, 240, 960, 940, 300),
@@ -739,37 +741,90 @@ class CombatModule(object):
                 self.swipe_counter += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all('enemy/fleet_level', sim - 0.025, useMask=True)))
-            l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L1: " +str(l1))
-            l2 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim - 0.02)))
-            l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L2: " +str(l2))
-            l3 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
-            l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L3: " +str(l3))
-            l4 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all('enemy/fleet_3_up', sim - 0.035)))
-            l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L4: " +str(l4))
-            l5 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all('enemy/fleet_3_down', sim - 0.035)))
-            l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L5: " +str(l5))
-            l6 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.025)))
-            l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L6: " +str(l6))
+            if self.use_intersection:
+                base_region_type = Region(60, 60, 100, 100)
+                base_region_level = Region(-60, -80, 100, 100)
+                single_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt1', sim - 0.04, useMask=True))
+                double_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt2', sim - 0.075, useMask=True))
+                triple_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt3', sim - 0.075, useMask=True))
+                lv_enemies = list(map(lambda coords: Region(coords[0].item() + base_region_level.x, coords[1].item() + base_region_level.y,
+                    base_region_level.w, base_region_level.h), Utils.find_all('enemy/enemylv', sim - 0.04, useMask=True)))
+                #screen = Utils.get_color_screen()
+                t1_enemies = []
+                for st in single_triangle:
+                    #Utils.draw_region(screen, st, (0,255,0), 2)
+                    t1_enemies.extend(map(st.intersection, lv_enemies))
+                t1_enemies = filter(None, t1_enemies)
+                t2_enemies = []
+                for dt in double_triangle:
+                    #Utils.draw_region(screen, dt, (0,255,0), 2)
+                    t2_enemies.extend(map(dt.intersection, lv_enemies))
+                t2_enemies = filter(None, t2_enemies)
+                t3_enemies = []
+                for tt in triple_triangle:
+                    #Utils.draw_region(screen, tt, (0,255,0), 2)
+                    t3_enemies.extend(map(tt.intersection, lv_enemies))
+                t3_enemies = filter(None, t3_enemies)
+                #for lv in lv_enemies:
+                #Utils.draw_region(screen, lv, (255,0,0), 2)
+                #cv2.imshow("combat", screen)
+                #cv2.waitKey(0)
+                #cv2.destroyAllWindows()
+
+                intersections = []
+                intersections.extend(t1_enemies)
+                intersections.extend(t2_enemies)
+                intersections.extend(t3_enemies)
+                filtered_intersections = []
+                while intersections:
+                    region = intersections.pop(0)
+                    new_intersections = []
+                    for item in intersections:
+                        res = region.intersection(item)
+                        if res:
+                            region = res
+                        else:
+                            new_intersections.append(item)
+                    intersections = new_intersections
+                    filtered_intersections.append(region)
+                enemies_coords = list(filter(lambda x: (x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(Region.get_center, filtered_intersections)))
+
+                self.enemies_list = [x for x in enemies_coords if (not self.filter_blacklist(x, blacklist))]
+
+            else:
+                l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all_with_resize('enemy/fleet_level', sim - 0.025, useMask=True)))
+                l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L1: " +str(l1))
+                l2 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_1_down', sim - 0.02)))
+                l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L2: " +str(l2))
+                l3 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all_with_resize('enemy/fleet_2_down', sim - 0.02)))
+                l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L3: " +str(l3))
+                l4 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all_with_resize('enemy/fleet_3_up', sim - 0.035)))
+                l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L4: " +str(l4))
+                l5 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all_with_resize('enemy/fleet_3_down', sim - 0.035)))
+                l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L5: " +str(l5))
+                l6 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_2_up', sim - 0.025)))
+                l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
+                Logger.log_debug("L6: " +str(l6))
+                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6
 
             if self.config.combat['siren_elites']:
                 l7 = Utils.find_siren_elites()
                 l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
                 Logger.log_debug("L7: " +str(l7))
-                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6 + l7
-            else:
-                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6
+                self.enemies_list.extend(l7)
 			
             sim -= 0.005
 
         if filter_coordinates:
-            self.enemies_list = Utils.filter_similar_coords(self.enemies_list)
+            self.enemies_list = Utils.filter_similar_coords(self.enemies_list, distance=67)
         return self.enemies_list
 
     def get_mystery_nodes(self, blacklist=[], boss=False):
