@@ -68,6 +68,17 @@ class Region(object):
         """Calculate and returns the center of this region."""
         return [(self.x * 2 + self.w)//2, (self.y * 2 + self.h)//2]
 
+    def contains(self, coords):
+        """Checks if the specified coordinates are inside the region.
+
+        Args:
+            coords (list or tuple of two elements): x and y coordinates.
+        
+        Returns:
+            (bool): whether the point is inside the region.
+        """
+        return (self.x <= coords[0] <= (self.x + self.w)) and (self.y <= coords[1] <= (self.y + self.h))
+
 screen = None
 last_ocr = ''
 bytepointer = 0
@@ -549,8 +560,8 @@ class Utils(object):
             bound_x, bound_y, width, height = cv2.boundingRect(approx)
             aspect_ratio = width / float(height)
     
-            # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
-            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.05:
+            # filter out non-Siren matches (non-squares)
+            if len(approx) == 4 and aspect_ratio >= 1.05:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)

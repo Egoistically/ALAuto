@@ -85,6 +85,17 @@ class CombatModule(object):
             'menu_nav_back': Region(54, 57, 67, 67)
         }
 
+        self.prohibited_region = {
+            'left_side_bar': Region(0, 162, 190, 926),
+            'top_bar': Region(0, 0, 1920, 114),
+            'fleet_info': Region(0, 114, 1728, 56),
+            'fleet_bonuses': Region(190, 170, 575, 75),
+            'mission_conditions': Region(1837, 130, 83, 220),
+            'strategy_tab': Region(1770, 590, 150, 136),
+            'fleet_lock_button': Region(1755, 726, 165, 90),
+            'command_buttons': Region(965, 940, 955, 140)
+        }
+
         self.swipe_counter = 0
 
     def combat_logic_wrapper(self):
@@ -778,6 +789,7 @@ class CombatModule(object):
                 intersections.extend(t1_enemies)
                 intersections.extend(t2_enemies)
                 intersections.extend(t3_enemies)
+                # filter duplicate intersections by intersecting them
                 filtered_intersections = []
                 while intersections:
                     region = intersections.pop(0)
@@ -790,35 +802,39 @@ class CombatModule(object):
                             new_intersections.append(item)
                     intersections = new_intersections
                     filtered_intersections.append(region)
-                enemies_coords = list(filter(lambda x: (x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(Region.get_center, filtered_intersections)))
+                enemies_coords = map(Region.get_center, filtered_intersections)
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    enemies_coords = [x for x in enemies_coords if (not p_region.contains(x))]
 
                 self.enemies_list = [x for x in enemies_coords if (not self.filter_blacklist(x, blacklist))]
 
             else:
-                l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all_with_resize('enemy/fleet_level', sim - 0.025, useMask=True)))
-                l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
+                l1 = list(map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all_with_resize('enemy/fleet_level', sim - 0.025, useMask=True)))
                 Logger.log_debug("L1: " +str(l1))
-                l2 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_1_down', sim - 0.02)))
-                l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
+                l2 = list(map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_1_down', sim - 0.02)))
                 Logger.log_debug("L2: " +str(l2))
-                l3 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all_with_resize('enemy/fleet_2_down', sim - 0.02)))
-                l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
+                l3 = list(map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all_with_resize('enemy/fleet_2_down', sim - 0.02)))
                 Logger.log_debug("L3: " +str(l3))
-                l4 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all_with_resize('enemy/fleet_3_up', sim - 0.035)))
-                l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
+                l4 = list(map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all_with_resize('enemy/fleet_3_up', sim - 0.035)))
                 Logger.log_debug("L4: " +str(l4))
-                l5 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all_with_resize('enemy/fleet_3_down', sim - 0.035)))
-                l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
+                l5 = list(map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all_with_resize('enemy/fleet_3_down', sim - 0.035)))
                 Logger.log_debug("L5: " +str(l5))
-                l6 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_2_up', sim - 0.025)))
-                l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
+                l6 = list(map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_2_up', sim - 0.025)))
                 Logger.log_debug("L6: " +str(l6))
-                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6
+                enemies_coords = l1 + l2 + l3 + l4 + l5 + l6
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    enemies_coords = [x for x in enemies_coords if (not p_region.contains(x))]
+                self.enemies_list = [x for x in enemies_coords if (not self.filter_blacklist(x, blacklist))]
 
             if self.config.combat['siren_elites']:
                 l7 = Utils.find_siren_elites()
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    l7 = [x for x in l7 if (not p_region.contains(x))]
                 l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
-                Logger.log_debug("L7: " +str(l7))
+                Logger.log_debug("L7 " +str(l7))
                 self.enemies_list.extend(l7)
 			
             sim -= 0.005
@@ -844,7 +860,10 @@ class CombatModule(object):
             while not self.mystery_nodes_list and sim > 0.93:
                 Utils.update_screen()
 
-                l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+                l1 = list(map(lambda x:[x[0], x[1] + 140], Utils.find_all_with_resize('combat/question_mark', sim)))
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    l1 = [x for x in l1 if (not p_region.contains(x))]
                 l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                 self.mystery_nodes_list = l1
