@@ -284,14 +284,14 @@ class CombatModule(object):
                     if not self.retirement_module.retirement_logic_wrapper(forced=True):
                         retirement_failed = True
                 else:
-                    self.exit = 3
+                    self.exit = 4
                     Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/alert_morale_low"):
                 if self.config.combat['ignore_morale']:
                     Utils.find_and_touch("menu/button_confirm")
                 else:
-                    self.exit = 2
+                    self.exit = 3
                     Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/combat_pause", 0.7):

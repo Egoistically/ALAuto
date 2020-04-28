@@ -150,7 +150,7 @@ class Config(object):
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
         self.combat['ignore_morale'] = config.getboolean('Combat', 'IgnoreMorale')
         self.combat['low_mood_sleep_time'] = self.try_cast_to_float(config.get('Combat', 'LowMoodSleepTime'))
-        self.combat['search_mode'] = int(config.get('Combat', 'SearchMode'))
+        self.combat['search_mode'] = self.try_cast_to_int(config.get('Combat', 'SearchMode'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
