@@ -3,12 +3,12 @@ import numpy
 import time
 import lz4.block
 from imutils import contours, grab_contours
-from multiprocessing.pool import ThreadPool
 from datetime import datetime, timedelta
 from random import uniform, gauss, randint
 from scipy import spatial
 from util.adb import Adb
 from util.logger import Logger
+from threading import Thread
 
 class Region(object):
     x, y, w, h = 0, 0, 0, 0
@@ -43,6 +43,41 @@ class Region(object):
         valid_h = (self.h - tolerance, self.h + tolerance)
         return (valid_x[0] <= region.x <= valid_x[1]  and valid_y[0] <= region.y <= valid_y[1] and
             valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
+
+    def intersection(self, other):
+        """Checks if there is an intersection between the two regions,
+        and if that is the case, returns it.
+        Taken from https://stackoverflow.com/a/25068722
+
+        Args:
+            other (Region): The region to intersect with.
+        
+        Returns:
+            intersection (Region) or None.
+        """
+        a = (self.x, self.y, self.x+self.w, self.y+self.h)
+        b = (other.x, other.y, other.x+other.w, other.y+other.h)
+        x1 = max(min(a[0], a[2]), min(b[0], b[2]))
+        y1 = max(min(a[1], a[3]), min(b[1], b[3]))
+        x2 = min(max(a[0], a[2]), max(b[0], b[2]))
+        y2 = min(max(a[1], a[3]), max(b[1], b[3]))
+        if x1<x2 and y1<y2:
+            return type(self)(x1, y1, x2-x1, y2-y1)
+
+    def get_center(self):
+        """Calculate and returns the center of this region."""
+        return [(self.x * 2 + self.w)//2, (self.y * 2 + self.h)//2]
+
+    def contains(self, coords):
+        """Checks if the specified coordinates are inside the region.
+
+        Args:
+            coords (list or tuple of two elements): x and y coordinates.
+        
+        Returns:
+            (bool): whether the point is inside the region.
+        """
+        return (self.x <= coords[0] <= (self.x + self.w)) and (self.y <= coords[1] <= (self.y + self.h))
 
 screen = None
 last_ocr = ''
@@ -161,6 +196,23 @@ class Utils(object):
         return color_screen
 
     @classmethod
+    def get_mask_from_alpha(cls, image):
+        """Calculate the mask of the specified image from its alpha channel.
+        The mask returned is a binary image, where the transparent pixels have been blacked.
+
+        Args:
+            image (string): image to load and use to calculate the mask.
+
+        Returns:
+            mask (numpy array): binary image obtained from the source image's alpha channel.
+        """
+        source = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), cv2.IMREAD_UNCHANGED)
+        # split into BGRA and get A
+        alpha_channel = cv2.split(source)[3]
+        ret, thresh = cv2.threshold(alpha_channel, 0, 255, cv2.THRESH_BINARY)
+        return thresh
+
+    @classmethod
     def get_enabled_ship_filters(cls, filter_categories="rarity"):
         """Method which returns the regions of all the options enabled for the current sorting filter.
 
@@ -224,7 +276,21 @@ class Utils(object):
         cv2.imshow("targets", color_screen)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        return        
+        return
+    
+    @staticmethod
+    def draw_region(screen, region, color, thickness):
+        """Method which draws a region (a rectangle) on the image (screen) passed as argument.
+
+        Args:
+            screen (numpy array): image to draw on.
+            region (Region): rectangle which needs to be drawn.
+            color (tuple): specifiy the color of the rectangle's lines.
+            thickness (int): specify the thickness of the rectangle's lines (-1 for it to be filled).
+        
+        See cv2.rectangle() docs.
+        """
+        cv2.rectangle(screen, (region.x, region.y), (region.x+region.w, region.y+region.h), color=color, thickness=thickness)
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -372,34 +438,19 @@ class Utils(object):
             u_interpolation = cv2.INTER_NEAREST
 
         results_list = []
-        regions_detected = []
         count = 0
         loop_limiter = (middle_range - lowerEnd)*100
 
-        # creating and launching worker processes
-        pool = ThreadPool(processes=4)
-
+        thread_list = []
         while (upperEnd > lowerEnd) and (count < loop_limiter):
-            l_result = pool.apply_async(cls.resize_and_match, (template, lowerEnd, similarity, l_interpolation))
-            u_result = pool.apply_async(cls.resize_and_match, (template, upperEnd, similarity, u_interpolation))
-            cls.script_sleep(0.01)
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, lowerEnd, similarity, l_interpolation)))
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, upperEnd, similarity, u_interpolation)))
             lowerEnd+=0.02
             upperEnd-=0.02
             count +=1
-            results_list.append(l_result)
-            results_list.append(u_result)
-        
-        # closing pool and waiting for results
-        pool.close()
-        pool.join()
-
-        # extract regions from async_result
-        for i in range(0, len(results_list)):
-            if results_list[i].get() is not None:
-                regions_detected.append(results_list[i].get())
-
-        if (len(regions_detected)>0):
-            return regions_detected[0]
+        cls.multithreader(thread_list)
+        if results_list:
+            return results_list[0]
         else:
             return None
 
@@ -422,7 +473,7 @@ class Utils(object):
 
         if useMask:
             comparison_method = cv2.TM_CCORR_NORMED
-            mask = cv2.imread('assets/{}/{}_mask.png'.format(cls.assets, image), 0)
+            mask = cls.get_mask_from_alpha(image)
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
@@ -431,25 +482,50 @@ class Utils(object):
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
 
-        pool = ThreadPool(processes=4)
-        count = 1.20
-        results_list = []
+        return cls.filter_similar_coords(
+            list(zip(cls.locations[1], cls.locations[0])))
 
-        while (len(cls.locations[0]) < 1) and (count > 0.80):
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            count -= 0.02
-            results_list.append(result)
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            cls.script_sleep(0.01)
-            count -= 0.02
-            results_list.append(result)
+    @classmethod
+    def find_all_with_resize(cls, image, similarity=DEFAULT_SIMILARITY, useMask=False):
+        """Finds all locations of the image at default size on the screen.
+        If nothing is found, the method proceeds to resize the image within the 
+        scaling range of (0.8, 1.2) with a step interval of 0.2 and repeats
+        the template matching operation for each resized images.
 
-        pool.close()
-        pool.join()
+        Args:
+            image (string): Name of the image.
+            similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
+                Percentage in similarity that the image should at least match.
+            useMask (boolean, optional): Defaults to False.
+                If set to True, this function uses a different comparison method and
+                a mask when searching for match.
 
-        # extracting locations from pool's results
-        for i in range(0, len(results_list)):
-            cls.locations = numpy.append(cls.locations, results_list[i].get(), axis=1)
+        Returns:
+            array: Array of all coordinates where the image appears
+        """
+        del cls.locations
+
+        if useMask:
+            comparison_method = cv2.TM_CCORR_NORMED
+            mask = cls.get_mask_from_alpha(image)
+        else:
+            comparison_method = cv2.TM_CCOEFF_NORMED
+            mask = None
+        
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
+        match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
+        cls.locations = numpy.where(match >= similarity)
+
+        if len(cls.locations[0]) < 1:
+            count = 1.20
+            thread_list = []
+            results_list = []
+            while count > 0.80:
+                thread_list.append(Thread(target=cls.match_resize, args=(results_list,template,count,comparison_method,similarity,useMask,mask)))
+                count -= 0.02
+            Utils.multithreader(thread_list)
+            for i in range(0, len(results_list)):
+                cls.locations = numpy.append(cls.locations, results_list[i], axis=1)
 
         return cls.filter_similar_coords(
             list(zip(cls.locations[1], cls.locations[0])))
@@ -461,7 +537,7 @@ class Utils(object):
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
         
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170,100,100])
+        lower_red = numpy.array([170,100,180])
         upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
@@ -471,7 +547,8 @@ class Utils(object):
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
-        im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = grab_contours(cnts)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
         
         locations = []
@@ -484,30 +561,30 @@ class Utils(object):
             bound_x, bound_y, width, height = cv2.boundingRect(approx)
             aspect_ratio = width / float(height)
     
-            # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
-            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.05:
+            # filter out non-Siren matches (non-squares)
+            if len(approx) == 4 and 170 <= width <= 230 and 80 <= height <= 180:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)
 
     @classmethod
-    def match_resize(cls, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
+    def match_resize(cls, results_list, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         if useMask: 
             mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         else:
             mask_resize = None
         match_resize = cv2.matchTemplate(screen, template_resize, comparison_method, mask=mask_resize)
-        return numpy.where(match_resize >= similarity)
+        results_list.append(numpy.where(match_resize >= similarity))
 
     @classmethod
-    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
+    def resize_and_match(cls, results_list, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
         template_resize = cv2.resize(templateImage, None, fx = scale, fy = scale, interpolation = interpolationMethod)
         width, height = template_resize.shape[::-1]
         match = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
         if (value >= similarity):
-             return Region(location[0], location[1], width, height)
+            results_list.append(Region(location[0], location[1], width, height))
 
     @classmethod
     def touch(cls, coords):
@@ -597,21 +674,23 @@ class Utils(object):
         return randint(min_val, max_val)
 
     @classmethod
-    def filter_similar_coords(cls, coords):
+    def filter_similar_coords(cls, coords, distance=50):
         """Filters out coordinates that are close to each other.
 
         Args:
             coords (array): An array containing the coordinates to be filtered.
+            distance (int): minimum distance at which two set of coordinates
+                are no longer considered close.
 
         Returns:
             array: An array containing the filtered coordinates.
         """
-        Logger.log_debug("Coords: " + str(coords))
+        #Logger.log_debug("Coords: " + str(coords))
         filtered_coords = []
         if len(coords) > 0:
             filtered_coords.append(coords[0])
             for coord in coords:
-                if cls.find_closest(filtered_coords, coord)[0] > 50:
+                if cls.find_closest(filtered_coords, coord)[0] > distance:
                     filtered_coords.append(coord)
         Logger.log_debug("Filtered Coords: " + str(filtered_coords))
         return filtered_coords
@@ -630,4 +709,4 @@ class Utils(object):
             in the list of coordinates to the specified coordinate as well the
             index of where it is in the list of coordinates
         """
-        return spatial.KDTree(coords).query(coord)
+        return spatial.cKDTree(coords).query(coord)
