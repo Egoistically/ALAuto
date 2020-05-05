@@ -2,6 +2,7 @@ import sys
 import re
 import traceback
 import argparse
+import os.path
 from modules.combat import CombatModule
 from modules.commission import CommissionModule
 from modules.enhancement import EnhancementModule
@@ -201,6 +202,10 @@ if adb.init():
         sys.exit()
 
     Utils.assets = config.assets['server']
+
+    # screencap init
+    Utils.init_screencap_mode(config.screenshot['mode'])
+
 else:
     Logger.log_error('Unable to connect to the service.')
     sys.exit()

@@ -97,6 +97,18 @@ class Adb(object):
         Logger.log_debug(str(cmd))
         subprocess.call(cmd)
 
+    @staticmethod
+    def cmd(args):
+        """Executes a general command of ADB
+
+        Args:
+            args (string): Command to execute.
+        """
+        cmd = ['adb', '-t', Adb.transID] + args.split(' ')
+        Logger.log_debug(str(cmd))
+        process = subprocess.Popen(cmd, stdout = subprocess.PIPE)
+        return process.communicate()[0]
+
     @classmethod
     def assign_serial(cls):
         cmd = ['adb', 'devices', '-l']

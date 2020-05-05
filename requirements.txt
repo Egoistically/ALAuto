@@ -2,3 +2,4 @@ imutils~=0.5.3
 numpy~=1.18.3
 opencv-python~=4.2.0.34
 scipy~=1.4.1
+lz4~=3.0.2

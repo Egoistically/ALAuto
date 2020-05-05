@@ -2,13 +2,16 @@ import cv2
 import numpy
 import time
 import struct
+import os
+import lz4.block
 from imutils import contours, grab_contours
-from multiprocessing.pool import ThreadPool
 from datetime import datetime, timedelta
 from random import uniform, gauss, randint
 from scipy import spatial
 from util.adb import Adb
 from util.logger import Logger
+from util.config_consts import UtilConsts
+from threading import Thread
 
 
 class Region(object):
@@ -46,30 +49,93 @@ class Region(object):
                 valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
 
 
+    def intersection(self, other):
+        """Checks if there is an intersection between the two regions,
+        and if that is the case, returns it.
+        Taken from https://stackoverflow.com/a/25068722
+
+        Args:
+            other (Region): The region to intersect with.
+
+        Returns:
+            intersection (Region) or None.
+        """
+        a = (self.x, self.y, self.x+self.w, self.y+self.h)
+        b = (other.x, other.y, other.x+other.w, other.y+other.h)
+        x1 = max(min(a[0], a[2]), min(b[0], b[2]))
+        y1 = max(min(a[1], a[3]), min(b[1], b[3]))
+        x2 = min(max(a[0], a[2]), max(b[0], b[2]))
+        y2 = min(max(a[1], a[3]), max(b[1], b[3]))
+        if x1<x2 and y1<y2:
+            return type(self)(x1, y1, x2-x1, y2-y1)
+
+    def get_center(self):
+        """Calculate and returns the center of this region."""
+        return [(self.x * 2 + self.w)//2, (self.y * 2 + self.h)//2]
+
+    def contains(self, coords):
+        """Checks if the specified coordinates are inside the region.
+        Args:
+            coords (list or tuple of two elements): x and y coordinates.
+
+        Returns:
+            (bool): whether the point is inside the region.
+        """
+        return (self.x <= coords[0] <= (self.x + self.w)) and (self.y <= coords[1] <= (self.y + self.h))
+
 screen = None
-color_screen = None
 last_ocr = ''
-
-# EXPERIMENTAL ASCREENCAP FLAG
-useAScreenCap = False
-
-SCREENCAP_PNG = 1
-SCREENCAP_RAW = 2
-screencap_mode = SCREENCAP_PNG
-
-# CONDITIONAL IMPORT
-if useAScreenCap:
-    import lz4.block
+bytepointer = 0
 
 
 class Utils(object):
+    screen = None
+    color_screen = None
     small_boss_icon = False
+    screencap_mode = None
+
     DEFAULT_SIMILARITY = 0.95
     assets = ''
     locations = ()
 
-    screen = None
-    color_screen = None
+    @classmethod
+    def init_screencap_mode(cls,mode):
+        consts = UtilConsts.ScreenCapMode
+
+        cls.screencap_mode = mode
+
+        if cls.screencap_mode == consts.ASCREENCAP:
+            # Prepare for ascreencap, push the required libraries
+            Adb.exec_out('rm /data/local/tmp/ascreencap')
+            cpuArc = Adb.exec_out('getprop ro.product.cpu.abi').decode('utf-8').strip()
+            sdkVer = int(Adb.exec_out('getprop ro.build.version.sdk').decode('utf-8').strip())
+            ascreencaplib = 'ascreencap_{}'.format(cpuArc)
+            if sdkVer in range(21, 26) and os.path.isfile(ascreencaplib):
+                Adb.cmd('push {} /data/local/tmp/ascreencap'.format(ascreencaplib))
+            else:
+                Logger.log_warning(
+                    'No suitable version of aScreenCap lib is available locally, using ascreencap_local...')
+                if os.path.isfile('ascreencap_local'):
+                    Adb.cmd('push ascreencap_local /data/local/tmp/ascreencap')
+                else:
+                    Logger.log_error(
+                        'File "ascreencap_local" not found. Please download the appropriate version of aScreenCap for your device from github.com/ClnViewer/Android-fast-screen-capture and save it as "ascreencap_local"')
+                    Logger.log_warning('Since aScreenCap is not ready, falling back to normal adb screencap')
+                    Utils.useAScreenCap = False
+            Adb.shell('chmod 0777 /data/local/tmp/ascreencap')
+
+    @staticmethod
+    def reposition_byte_pointer(byteArray):
+        """Method to return the sanitized version of ascreencap stdout for devices
+            that suffers from linker warnings. The correct pointer location will be saved
+            for subsequent screen refreshes
+        """
+        global bytepointer
+        while(byteArray[bytepointer:bytepointer + 4] != b'BMZ1'):
+            bytepointer += 1
+            if bytepointer >= len(byteArray):
+                raise Exception('Repositioning byte pointer failed, corrupted aScreenCap data received')
+        return byteArray[bytepointer:]
 
     @staticmethod
     def multithreader(threads):
@@ -112,20 +178,21 @@ class Utils(object):
         Returns:
             image: A CV2 image object containing the current device screen.
         """
+        consts = UtilConsts.ScreenCapMode
+
         global screen
-        global color_screen
         screen = None
         color_screen = None
         while color_screen is None:
             if Adb.legacy:
                 color_screen = cv2.imdecode(
                     numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"), dtype=numpy.uint8),
-                    cv2.IMREAD_ANYCOLOR)
-            elif not useAScreenCap:
-                if screencap_mode == SCREENCAP_PNG:
-                    color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8),
-                                                cv2.IMREAD_ANYCOLOR)
-                elif screencap_mode == SCREENCAP_RAW:
+                    cv2.IMREAD_COLOR)
+            else:
+                if cls.screencap_mode == consts.SCREENCAP_PNG:
+                    color_screen = cv2.imdecode(numpy.frombuffer(Adb.exec_out('screencap -p'), dtype=numpy.uint8),
+                                                cv2.IMREAD_COLOR)
+                elif cls.screencap_mode == consts.SCREENCAP_RAW:
                     pixel_size = 4
 
                     byte_arr = Adb.exec_out('screencap')
@@ -141,25 +208,28 @@ class Utils(object):
                     tmp = numpy.frombuffer(byte_arr, dtype=numpy.uint8, count=width * height * 4, offset=header_size)
                     rgb_img = tmp.reshape((height, width, -1))
                     color_screen = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
+                elif cls.screencap_mode == consts.ASCREENCAP:
+                    start_time = time.perf_counter()
+                    raw_compressed_data = Utils.reposition_byte_pointer(
+                        Adb.exec_out('/data/local/tmp/ascreencap --pack 2 --stdout'))
+                    compressed_data_header = numpy.frombuffer(raw_compressed_data[0:20], dtype=numpy.uint32)
+                    if compressed_data_header[0] != 828001602:
+                        compressed_data_header = compressed_data_header.byteswap()
+                        if compressed_data_header[0] != 828001602:
+                            Logger.log_error('If error persists, disable aScreenCap and report traceback')
+                            raise Exception(
+                                'aScreenCap header verification failure, corrupted image received. HEADER IN HEX = {}'.format(
+                                    compressed_data_header.tobytes().hex()))
+                    uncompressed_data_size = compressed_data_header[1].item()
+                    color_screen = cv2.imdecode(numpy.frombuffer(
+                        lz4.block.decompress(raw_compressed_data[20:], uncompressed_size=uncompressed_data_size),
+                        dtype=numpy.uint8), cv2.IMREAD_COLOR)
+                    elapsed_time = time.perf_counter() - start_time
+                    Logger.log_debug("aScreenCap took {} ms to complete.".format('%.2f' % (elapsed_time * 1000)))
                 else:
                     raise Exception('Unknown screencap mode')
-            else:
-                start_time = time.perf_counter()
-                raw_compressed_data = Adb.exec_out('/data/local/tmp/ascreencap --pack 2 --stdout')
-                compressed_data_header = numpy.frombuffer(raw_compressed_data[0:20], dtype=numpy.uint32)
-                if compressed_data_header[0] != 828001602:
-                    compressed_data_header = compressed_data_header.byteswap()
-                    if compressed_data_header[0] != 828001602:
-                        raise Exception('aScreenCap header verification failure, corrupted image received')
-                uncompressed_data_size = compressed_data_header[1].item()
-                color_screen = cv2.imdecode(numpy.frombuffer(
-                    lz4.block.decompress(raw_compressed_data[20:], uncompressed_size=uncompressed_data_size),
-                    dtype=numpy.uint8), cv2.IMREAD_ANYCOLOR)
-                elapsed_time = time.perf_counter() - start_time
-                Logger.log_debug("aScreenCap took {} ms to complete.".format('%.2f' % (elapsed_time * 1000)))
 
             screen = cv2.cvtColor(color_screen, cv2.COLOR_BGR2GRAY)
-
             cls.color_screen = color_screen
             cls.screen = screen
 
@@ -192,6 +262,23 @@ class Utils(object):
             else:
                 color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
         return color_screen
+
+    @classmethod
+    def get_mask_from_alpha(cls, image):
+        """Calculate the mask of the specified image from its alpha channel.
+        The mask returned is a binary image, where the transparent pixels have been blacked.
+
+        Args:
+            image (string): image to load and use to calculate the mask.
+
+        Returns:
+            mask (numpy array): binary image obtained from the source image's alpha channel.
+        """
+        source = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), cv2.IMREAD_UNCHANGED)
+        # split into BGRA and get A
+        alpha_channel = cv2.split(source)[3]
+        ret, thresh = cv2.threshold(alpha_channel, 0, 255, cv2.THRESH_BINARY)
+        return thresh
 
     @classmethod
     def get_enabled_ship_filters(cls, filter_categories="rarity"):
@@ -258,6 +345,20 @@ class Utils(object):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
         return
+
+    @staticmethod
+    def draw_region(screen, region, color, thickness):
+        """Method which draws a region (a rectangle) on the image (screen) passed as argument.
+
+        Args:
+            screen (numpy array): image to draw on.
+            region (Region): rectangle which needs to be drawn.
+            color (tuple): specifiy the color of the rectangle's lines.
+            thickness (int): specify the thickness of the rectangle's lines (-1 for it to be filled).
+
+        See cv2.rectangle() docs.
+        """
+        cv2.rectangle(screen, (region.x, region.y), (region.x+region.w, region.y+region.h), color=color, thickness=thickness)
 
     @staticmethod
     def read_numbers(x, y, w, h, max_digits=5):
@@ -356,7 +457,7 @@ class Utils(object):
             template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
             match = cv2.matchTemplate(cls.screen, template, cv2.TM_CCOEFF_NORMED)
 
-        width, height = template.shape[:2]
+        height, width = template.shape[:2]
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
         if value >= similarity:
             return Region(location[0], location[1], width, height)
@@ -396,7 +497,7 @@ class Utils(object):
             lowerEnd = 0.4
             upperEnd = 0.6
 
-        # preparing interpolation methods        
+        # preparing interpolation methods
         middle_range = (upperEnd + lowerEnd) / 2.0
         if lowerEnd < 1 and upperEnd > 1 and middle_range == 1:
             l_interpolation = cv2.INTER_AREA
@@ -412,34 +513,19 @@ class Utils(object):
             u_interpolation = cv2.INTER_NEAREST
 
         results_list = []
-        regions_detected = []
         count = 0
         loop_limiter = (middle_range - lowerEnd) * 100
 
-        # creating and launching worker processes
-        pool = ThreadPool(processes=4)
-
+        thread_list = []
         while (upperEnd > lowerEnd) and (count < loop_limiter):
-            l_result = pool.apply_async(cls.resize_and_match, (template, lowerEnd, similarity, l_interpolation))
-            u_result = pool.apply_async(cls.resize_and_match, (template, upperEnd, similarity, u_interpolation))
-            cls.script_sleep(0.01)
-            lowerEnd += 0.02
-            upperEnd -= 0.02
-            count += 1
-            results_list.append(l_result)
-            results_list.append(u_result)
-
-        # closing pool and waiting for results
-        pool.close()
-        pool.join()
-
-        # extract regions from async_result
-        for i in range(0, len(results_list)):
-            if results_list[i].get() is not None:
-                regions_detected.append(results_list[i].get())
-
-        if (len(regions_detected) > 0):
-            return regions_detected[0]
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, lowerEnd, similarity, l_interpolation)))
+            thread_list.append(Thread(target=cls.resize_and_match, args=(results_list, template, upperEnd, similarity, u_interpolation)))
+            lowerEnd+=0.02
+            upperEnd-=0.02
+            count +=1
+        cls.multithreader(thread_list)
+        if results_list:
+            return results_list[0]
         else:
             return None
 
@@ -462,7 +548,7 @@ class Utils(object):
 
         if useMask:
             comparison_method = cv2.TM_CCORR_NORMED
-            mask = cv2.imread('assets/{}/{}_mask.png'.format(cls.assets, image), 0)
+            mask = cls.get_mask_from_alpha(image)
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
@@ -471,25 +557,50 @@ class Utils(object):
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
 
-        pool = ThreadPool(processes=4)
-        count = 1.20
-        results_list = []
+        return cls.filter_similar_coords(
+            list(zip(cls.locations[1], cls.locations[0])))
 
-        while (len(cls.locations[0]) < 1) and (count > 0.80):
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            count -= 0.02
-            results_list.append(result)
-            result = pool.apply_async(cls.match_resize, (template, count, comparison_method, similarity, useMask, mask))
-            cls.script_sleep(0.01)
-            count -= 0.02
-            results_list.append(result)
+    @classmethod
+    def find_all_with_resize(cls, image, similarity=DEFAULT_SIMILARITY, useMask=False):
+        """Finds all locations of the image at default size on the screen.
+        If nothing is found, the method proceeds to resize the image within the
+        scaling range of (0.8, 1.2) with a step interval of 0.2 and repeats
+        the template matching operation for each resized images.
 
-        pool.close()
-        pool.join()
+        Args:
+            image (string): Name of the image.
+            similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
+                Percentage in similarity that the image should at least match.
+            useMask (boolean, optional): Defaults to False.
+                If set to True, this function uses a different comparison method and
+                a mask when searching for match.
 
-        # extracting locations from pool's results
-        for i in range(0, len(results_list)):
-            cls.locations = numpy.append(cls.locations, results_list[i].get(), axis=1)
+        Returns:
+            array: Array of all coordinates where the image appears
+        """
+        del cls.locations
+
+        if useMask:
+            comparison_method = cv2.TM_CCORR_NORMED
+            mask = cls.get_mask_from_alpha(image)
+        else:
+            comparison_method = cv2.TM_CCOEFF_NORMED
+            mask = None
+
+        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
+        match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
+        cls.locations = numpy.where(match >= similarity)
+
+        if len(cls.locations[0]) < 1:
+            count = 1.20
+            thread_list = []
+            results_list = []
+            while count > 0.80:
+                thread_list.append(Thread(target=cls.match_resize, args=(results_list,template,count,comparison_method,similarity,useMask,mask)))
+                count -= 0.02
+            Utils.multithreader(thread_list)
+            for i in range(0, len(results_list)):
+                cls.locations = numpy.append(cls.locations, results_list[i], axis=1)
 
         return cls.filter_similar_coords(
             list(zip(cls.locations[1], cls.locations[0])))
@@ -501,8 +612,8 @@ class Utils(object):
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
 
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
-        lower_red = numpy.array([170, 100, 100])
-        upper_red = numpy.array([180, 255, 255])
+        lower_red = numpy.array([170,100,180])
+        upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
         ret, thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)
@@ -511,7 +622,8 @@ class Utils(object):
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
 
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = grab_contours(cnts)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
 
         locations = []
@@ -524,31 +636,30 @@ class Utils(object):
             bound_x, bound_y, width, height = cv2.boundingRect(approx)
             aspect_ratio = width / float(height)
 
-            # Avoid clicking on areas outside of the grid, filter out non-Siren matches (non-squares)
-            if y > 160 and y < 938 and x > 180 and x < 1790 and len(approx) == 4 and aspect_ratio >= 1.05:
+            # filter out non-Siren matches (non-squares)
+            if len(approx) == 4 and 170 <= width <= 230 and 80 <= height <= 180:
                 locations.append([x, y])
 
         return cls.filter_similar_coords(locations)
 
     @classmethod
-    def match_resize(cls, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
-        template_resize = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+    def match_resize(cls, results_list, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
+        template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         if useMask:
-            mask_resize = cv2.resize(mask, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+            mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         else:
             mask_resize = None
         match_resize = cv2.matchTemplate(screen, template_resize, comparison_method, mask=mask_resize)
-        return numpy.where(match_resize >= similarity)
+        results_list.append(numpy.where(match_resize >= similarity))
 
     @classmethod
-    def resize_and_match(cls, templateImage, scale, similarity=DEFAULT_SIMILARITY,
-                         interpolationMethod=cv2.INTER_NEAREST):
-        template_resize = cv2.resize(templateImage, None, fx=scale, fy=scale, interpolation=interpolationMethod)
+    def resize_and_match(cls, results_list, templateImage, scale, similarity=DEFAULT_SIMILARITY, interpolationMethod=cv2.INTER_NEAREST):
+        template_resize = cv2.resize(templateImage, None, fx = scale, fy = scale, interpolation = interpolationMethod)
         width, height = template_resize.shape[::-1]
         match = cv2.matchTemplate(screen, template_resize, cv2.TM_CCOEFF_NORMED)
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
         if (value >= similarity):
-            return Region(location[0], location[1], width, height)
+            results_list.append(Region(location[0], location[1], width, height))
 
     @classmethod
     def touch(cls, coords):
@@ -639,21 +750,23 @@ class Utils(object):
         return randint(min_val, max_val)
 
     @classmethod
-    def filter_similar_coords(cls, coords):
+    def filter_similar_coords(cls, coords, distance=50):
         """Filters out coordinates that are close to each other.
 
         Args:
             coords (array): An array containing the coordinates to be filtered.
+            distance (int): minimum distance at which two set of coordinates
+                are no longer considered close.
 
         Returns:
             array: An array containing the filtered coordinates.
         """
-        Logger.log_debug("Coords: " + str(coords))
+        #Logger.log_debug("Coords: " + str(coords))
         filtered_coords = []
         if len(coords) > 0:
             filtered_coords.append(coords[0])
             for coord in coords:
-                if cls.find_closest(filtered_coords, coord)[0] > 50:
+                if cls.find_closest(filtered_coords, coord)[0] > distance:
                     filtered_coords.append(coord)
         Logger.log_debug("Filtered Coords: " + str(filtered_coords))
         return filtered_coords

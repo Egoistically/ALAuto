@@ -1,7 +1,9 @@
 import configparser
 import sys
+import re
 from copy import deepcopy
 from util.logger import Logger
+import util.config_consts
 
 
 class Config(object):
@@ -32,13 +34,45 @@ class Config(object):
         self.events = {'enabled': False}
         self.network = {}
         self.assets = {}
+        self.screenshot = {}
         self.read()
 
+    def try_cast_to_int(self, val):
+        """Helper function that attempts to coerce the val to an int,
+        returning the val as-is the cast fails
+        Args:
+            val (string): string to attempt to cast to int
+        Returns:
+            int, str: int if the cast was successful; the original str
+                representation otherwise
+        """
+        try:
+            return int(val)
+        except ValueError:
+            return val
+
+    def try_cast_to_float(self, val):
+        """Helper function that attempts to coerce the val to a float,
+        returning the val as-is the cast fails
+        Args:
+            val (string): string to attempt to cast to float
+        Returns:
+            float, str: float if the cast was successful; the original str
+                representation otherwise
+        """
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
     def read(self):
+
         backup_config = deepcopy(self.__dict__)
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
+        self._read_screenshot(config)
+
         self.assets['server'] = config.get('Assets', 'Server')
 
         if config.getboolean('Updates', 'Enabled'):
@@ -91,6 +125,19 @@ class Config(object):
                 Logger.log_warning("Config change detected. Hot-reloading.")
                 self.changed = True
 
+    def _read_screenshot(self, config):
+        """Method to parse the Updates settings of the passed in config.
+            Args:
+                config (ConfigParser): ConfigParser instance
+        """
+
+        consts = util.config_consts.UtilConsts.ScreenCapMode
+        self.screenshot['mode'] = self._validate_list(config.get('Screenshot', 'Mode'), min_len=1, max_len=1,
+                                                      valid_vals=['SCREENCAP_PNG', 'SCREENCAP_RAW', 'ASCREENCAP'],
+                                                      map_vals=[consts.SCREENCAP_PNG, consts.SCREENCAP_RAW,
+                                                                consts.ASCREENCAP],
+                                                      cast=lambda x: x.upper())[0]
+
     def _read_updates(self, config):
         """Method to parse the Updates settings of the passed in config.
         Args:
@@ -106,11 +153,11 @@ class Config(object):
         """
         self.combat['enabled'] = True
         self.combat['map'] = config.get('Combat', 'Map')
-        self.combat['kills_before_boss'] = int(config.get('Combat', 'KillsBeforeBoss'))
+        self.combat['kills_before_boss'] = self.try_cast_to_int(config.get('Combat', 'KillsBeforeBoss'))
         self.combat['boss_fleet'] = config.getboolean('Combat', 'BossFleet')
-        self.combat['oil_limit'] = int(config.get('Combat', 'OilLimit'))
-        self.combat['retire_cycle'] = int(config.get('Combat', 'RetireCycle'))
-        self.combat['retreat_after'] = int(config.get('Combat', 'RetreatAfter'))
+        self.combat['oil_limit'] = self.try_cast_to_int(config.get('Combat', 'OilLimit'))
+        self.combat['retire_cycle'] = self.try_cast_to_int(config.get('Combat', 'RetireCycle'))
+        self.combat['retreat_after'] = self.try_cast_to_int(config.get('Combat', 'RetreatAfter'))
         self.combat['ignore_mystery_nodes'] = config.getboolean('Combat', 'IgnoreMysteryNodes')
         self.combat['focus_on_mystery_nodes'] = config.getboolean('Combat', 'FocusOnMysteryNodes')
         self.combat['clearing_mode'] = config.getboolean('Combat', 'ClearingMode')
@@ -118,7 +165,8 @@ class Config(object):
         self.combat['small_boss_icon'] = config.getboolean('Combat', 'SmallBossIcon')
         self.combat['siren_elites'] = config.getboolean('Combat', 'SirenElites')
         self.combat['ignore_morale'] = config.getboolean('Combat', 'IgnoreMorale')
-        self.combat['low_mood_sleep_time'] = float(config.get('Combat', 'LowMoodSleepTime'))
+        self.combat['low_mood_sleep_time'] = self.try_cast_to_float(config.get('Combat', 'LowMoodSleepTime'))
+        self.combat['search_mode'] = self.try_cast_to_int(config.get('Combat', 'SearchMode'))
 
     def _read_headquarters(self, config):
         """Method to parse the Headquarters settings passed in config.
@@ -129,10 +177,10 @@ class Config(object):
         if self.dorm['enabled']:
             self.dorm['AvailableSupplies'] = self._validate_list(config.get('Headquarters', 'AvailableSupplies'),
                                                                  valid_vals=[1000, 2000, 3000, 5000, 10000, 20000],
-                                                                 min_len=1, max_len=5, cast=int, unique=True)
+                                                                 min_len=1, max_len=6, cast=int, unique=True)
         self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
         if self.academy['enabled']:
-            self.academy['skill_book_tier'] = int(config.get('Headquarters', 'SkillBookTier'))
+            self.academy['skill_book_tier'] = self.try_cast_to_int(config.get('Headquarters', 'SkillBookTier'))
 
     def _read_enhancement(self, config):
         """Method to parse the Enhancement settings of the passed in config.
@@ -175,24 +223,10 @@ class Config(object):
         self.events['ignore_rateup'] = config.getboolean('Events', 'IgnoreRateUp')
 
     def validate(self):
-        def try_cast_to_int(val):
-            """Helper function that attempts to coerce the val to an int,
-            returning the val as-is the cast fails
-            Args:
-                val (string): string to attempt to cast to int
-            Returns:
-                int, str: int if the cast was successful; the original str
-                    representation otherwise
-            """
-            try:
-                return int(val)
-            except ValueError:
-                return val
-
         """Method to validate the passed in config file
         """
         if not self.initialized:
-            Logger.log_msg("Validating config")
+          Logger.log_msg("Validating config")
         self.ok = True
 
         valid_servers = ['EN', 'JP']
@@ -222,8 +256,8 @@ class Config(object):
                                                 'C1', 'C2', 'C3', 'C4',
                                                 'D1', 'D2', 'D3', 'D4',
                                                 'SP1', 'SP2', 'SP3', 'SP4', 'SP5']
-            if (try_cast_to_int(map[0]) not in valid_chapters or
-                try_cast_to_int(map[1]) not in valid_levels):
+            if (self.try_cast_to_int(map[0]) not in valid_chapters or
+                self.try_cast_to_int(map[1]) not in valid_levels):
                 self.ok = False
                 Logger.log_error("Invalid Map Selected: '{}'."
                                 .format(self.combat['map']))
@@ -244,6 +278,10 @@ class Config(object):
                 self.ok = False
                 Logger.log_error("Invalid KillsBeforeBoss value: must be an integer >= 0.")
 
+            if not isinstance(self.combat['retreat_after'], int) or self.combat['retreat_after'] < 0:
+                self.ok = False
+                Logger.log_error("Invalid RetreatAfter value: must be an integer >= 0.")
+
             if map[0] != "E" and self.combat['small_boss_icon']:
                 self.ok = False
                 Logger.log_error("Story maps don't have small boss icon.")
@@ -251,6 +289,15 @@ class Config(object):
             if not isinstance(self.combat['low_mood_sleep_time'], float) or self.combat['low_mood_sleep_time'] < 0:
                 self.ok = False
                 Logger.log_error("LowMoodSleepTime must be a float > 0.")
+
+            if self.combat['search_mode'] not in [0, 1]:
+                self.ok = False
+                Logger.log_error("Wrong search mode. Allowed values: [0, 1].")
+
+        if self.academy['enabled']:
+            tier = self.academy['skill_book_tier']
+            if not isinstance(tier, int) or not 1 <= tier <= 3:
+                Logger.log_error("Skill book tier must be an integer between 1 and 3.")
 
         if self.events['enabled']:
             events = ['Crosswave', 'Royal_Maids']
@@ -277,8 +324,8 @@ class Config(object):
         for key in config:
             setattr(self, key, config['key'])
 
-    def _validate_list(self, val, min_len=None, max_len=None, valid_vals=None, cast=None, unique=False):
-        s_list = val.split()
+    def _validate_list(self, val, min_len=None, max_len=None, valid_vals=None, map_vals=None, cast=None, unique=False):
+        s_list = re.split(r'\s*,\s*|\s+', val)
 
         if min_len is not None and len(s_list) < min_len:
             raise ValueError()
@@ -291,6 +338,8 @@ class Config(object):
             for v in s_list:
                 if v not in valid_vals:
                     raise ValueError()
+                if map_vals is not None:
+                    s_list[i] = map_vals[valid_vals.index(s_list[i])]
         if unique and len(set(s_list)) != len(s_list):
             raise ValueError()
 

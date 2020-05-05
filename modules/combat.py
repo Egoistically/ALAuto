@@ -3,7 +3,6 @@ import string
 from datetime import datetime, timedelta
 from util.logger import Logger
 from util.utils import Region, Utils
-from scipy import spatial
 from threading import Thread
 
 class CombatModule(object):
@@ -22,6 +21,7 @@ class CombatModule(object):
         self.stats = stats
         self.retirement_module = retirement_module
         self.enhancement_module = enhancement_module
+        self.use_intersection = True if self.config.combat['search_mode'] == 1 else False
         self.chapter_map = self.config.combat['map']
         Utils.small_boss_icon = config.combat['small_boss_icon']
         self.exit = 0
@@ -81,6 +81,17 @@ class CombatModule(object):
             'clear_second_fleet': Region(1690, 473, 40, 40),
             'button_switch_fleet': Region(1430, 985, 240, 60),
             'menu_nav_back': Region(54, 57, 67, 67)
+        }
+
+        self.prohibited_region = {
+            'left_side_bar': Region(0, 162, 190, 926),
+            'top_bar': Region(0, 0, 1920, 114),
+            'fleet_info': Region(0, 114, 1728, 56),
+            'fleet_bonuses': Region(190, 170, 575, 75),
+            'mission_conditions': Region(1837, 130, 83, 220),
+            'strategy_tab': Region(1770, 590, 150, 136),
+            'fleet_lock_button': Region(1755, 726, 165, 90),
+            'command_buttons': Region(965, 940, 955, 140)
         }
 
         self.swipe_counter = 0
@@ -273,13 +284,15 @@ class CombatModule(object):
                     if not self.retirement_module.retirement_logic_wrapper(forced=True):
                         retirement_failed = True
                 else:
-                    self.retreat_handler()
+                    self.exit = 4
+                    Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/alert_morale_low"):
                 if self.config.combat['ignore_morale']:
                     Utils.find_and_touch("menu/button_confirm")
                 else:
-                    self.retreat_handler()
+                    self.exit = 3
+                    Utils.touch_randomly(self.region['close_info_dialog'])
                     return False
             elif Utils.find("combat/combat_pause", 0.7):
                 Logger.log_warning("Loading screen was not found but combat pause is present, assuming combat is initiated normally.")
@@ -346,8 +359,6 @@ class CombatModule(object):
                     items_received = True
                     confirmed_fight = True
                     Utils.touch_randomly(self.region["combat_end_confirm"])
-                    if boss:
-                        return True
                     Utils.wait_update_screen(3)
                 if (not confirmed_fight) and Utils.find("combat/commander"):
                     items_received = True
@@ -368,6 +379,9 @@ class CombatModule(object):
                         self.mystery_nodes_list.clear()
                         self.blacklist.clear()
                         Utils.script_sleep(3)
+                        if boss:
+                            self.exit = 5
+                            return False
                         continue
                     else:
                         # flagship sunk, but part of backline still remains
@@ -379,7 +393,7 @@ class CombatModule(object):
                     Logger.log_msg("Found commission info message.")
                     Utils.touch_randomly(self.region["combat_com_confirm"])
                     continue
-                if confirmed_fight and Utils.find("combat/button_retreat"):
+                if confirmed_fight and (not boss) and Utils.find("combat/button_retreat"):
                     #Utils.touch_randomly(self.region["hide_strat_menu"])
                     if confirmed_fleet_switch:
                         # if fleet was defeated and it has now been switched
@@ -395,6 +409,9 @@ class CombatModule(object):
                     Logger.log_debug("Fleet was defeated.")
                     defeat = True
                     Utils.script_sleep(3)
+                if boss and confirmed_fight:
+                    if not defeat:
+                        return True
 
     def movement_handler(self, target_info):
         """
@@ -514,29 +531,28 @@ class CombatModule(object):
     def retreat_handler(self):
         """ Retreats if necessary.
         """
-        while True:
-            Utils.wait_update_screen(2)
 
-            if Utils.find("combat/alert_morale_low"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 3
-                continue
-            if Utils.find("menu/button_sort"):
-                Utils.touch_randomly(self.region['close_info_dialog'])
-                self.exit = 4
-                continue
+        force_retreat = True if self.exit != 1 else False
+        pressed_retreat_button = False
+
+        while True:
+            Utils.update_screen()
+
             if Utils.find("combat/menu_formation"):
                 Utils.touch_randomly(self.region["menu_nav_back"])
+                Utils.script_sleep(1)
                 continue
-            if Utils.find("combat/button_retreat"):
+            if force_retreat and (not pressed_retreat_button) and Utils.find("combat/button_retreat"):
+                Logger.log_msg("Retreating...")
                 Utils.touch_randomly(self.region['retreat_button'])
+                pressed_retreat_button = True
+                Utils.script_sleep(1)
                 continue
-            if Utils.find("menu/button_confirm"):
-                Utils.touch_randomly(self.region['combat_com_confirm'])
+            if Utils.find_and_touch("menu/button_confirm"):
+                # confirm either the retreat or an urgent commission alert
+                Utils.script_sleep(1)
                 continue
             if Utils.find("menu/attack"):
-                if self.exit != 1 and self.exit != 2 and self.exit != 5:
-                    Logger.log_msg("Retreating...")
                 return
 
     def clear_map(self):
@@ -559,13 +575,9 @@ class CombatModule(object):
 
         #swipe map to fit everything on screen
         swipes = {
-            'E-A2': lambda: Utils.swipe(960, 540, 960, 580, 300),
-            'E-A3': lambda: Utils.swipe(960, 540, 960, 500, 300),
-            'E-B3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
-            'E-C2': lambda: Utils.swipe(960, 540, 960, 580, 300),
-            'E-C3': lambda: Utils.swipe(960, 540, 960, 500, 300),
-            'E-D3': lambda: Utils.swipe(1040, 640, 960, 440, 300),
-            '7-2': lambda: Utils.swipe(960, 540, 400, 600, 300),
+            'E-B3': lambda: Utils.swipe(960, 540, 1060, 670, 300),
+            'E-D3': lambda: Utils.swipe(960, 540, 1060, 670, 300),
+            # needs to be updated
             '12-2': lambda: Utils.swipe(1000, 570, 1300, 540, 300),
             '12-3': lambda: Utils.swipe(1250, 530, 1300, 540, 300),
             '12-4': lambda: Utils.swipe(960, 300, 960, 540, 300),
@@ -574,7 +586,7 @@ class CombatModule(object):
             '13-3': lambda: Utils.swipe(1150, 510, 1300, 540, 300),
             '13-4': lambda: Utils.swipe(1200, 450, 1300, 540, 300)
         }
-        swipes.get(self.chapter_map, lambda: Utils.swipe(960, 540, 450, 540, 300))()
+        swipes.get(self.chapter_map, lambda: None)()
 
         # disable subs' hunting range
         if self.config.combat["hide_subs_hunting_range"]:
@@ -603,7 +615,10 @@ class CombatModule(object):
                 Logger.log_msg("Boss fleet was found.")
 
                 if self.config.combat['boss_fleet']:
-                    s = 0
+                    if self.chapter_map == 'E-B3' or self.chapter_map == 'E-D3':
+                        s = 3
+                    else:
+                        s = 0
                     swipes = {
                         0: lambda: Utils.swipe(960, 240, 960, 940, 300),
                         1: lambda: Utils.swipe(1560, 540, 260, 540, 300),
@@ -615,40 +630,18 @@ class CombatModule(object):
                     Utils.wait_update_screen(2)
                     boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
 
-                    if self.chapter_map == 'E-B3' or self.chapter_map == 'E-D3':
-                        # sometimes the fleet marker blocks the view of the boss icon
-                        # moving the boss fleet first to the right and then to the left
-                        # to get a clear view of the boss
-                        counter = 1
-                        self.fleet_location = [960, 540]
-                        while not boss_region:
-                            if counter % 2 != 0:
-                                Utils.touch([self.fleet_location[0] + (counter % 5) * 200, self.fleet_location[1]])
-                                self.fleet_location[0] += (counter % 5) * 200
-                            else:
-                                Utils.touch([self.fleet_location[0] - (counter % 5) * 200, self.fleet_location[1]])
-                                self.fleet_location[0] -= (counter % 5) * 200
-
-                            Utils.wait_update_screen()
-                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
-                            counter += 1
-                            if counter == 5: counter += 1
-                            if counter == 10:
-                                # back to starting position
-                                counter = 1
-                                self.fleet_location = [960, 540]
-                    else:
-                        while not boss_region:
-                            if s > 3: s = 0
-                            swipes.get(s)()
-
-                            Utils.wait_update_screen(0.5)
-                            boss_region = Utils.find_in_scaling_range("enemy/fleet_boss")
-                            s += 1
+                    while not boss_region:
+                        if s > 3: s = 0
+                        swipes.get(s)()
+                        Utils.wait_update_screen(0.5)
+                        boss_region = Utils.find_in_scaling_range("enemy/fleet_boss", similarity=0.9)
+                        s += 1
 
                     # swipe to center the boss fleet on the screen
                     # first calculate the translation vector coordinates
-                    horizontal_translation = 150 if boss_region.x < 960 else - 150
+                    translation_sign = 1 if boss_region.x < 960 else -1
+                    translation_module = 175 if boss_region.y > 300 else 75
+                    horizontal_translation = translation_sign * translation_module
                     angular_coefficient = -1 * ((540 - boss_region.y)/(960 - boss_region.x))
                     Utils.swipe(boss_region.x + horizontal_translation, boss_region.y + int(horizontal_translation * angular_coefficient), 
                         960 + horizontal_translation, 540 + int(horizontal_translation * angular_coefficient), 300)
@@ -714,6 +707,9 @@ class CombatModule(object):
                 if self.battle_handler(boss=True):
                     self.exit = 1
                     Logger.log_msg("Boss successfully defeated.")
+                else:
+                    self.exit = 5
+                    Logger.log_warning("Fleet defeated by boss.")
                 Utils.script_sleep(3)
                 return
 
@@ -726,7 +722,7 @@ class CombatModule(object):
                 self.enemies_list.clear()
 
         while not self.enemies_list:
-            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.97:
+            if (boss and len(blacklist) > 4) or (not boss and len(blacklist) > 3) or sim < 0.985:
                 if self.swipe_counter > 3: self.swipe_counter = 0
                 swipes = {
                     0: lambda: Utils.swipe(960, 240, 960, 940, 300),
@@ -739,37 +735,86 @@ class CombatModule(object):
                 self.swipe_counter += 1
             Utils.update_screen()
 
-            l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all('enemy/fleet_level', sim - 0.025, useMask=True)))
-            l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L1: " +str(l1))
-            l2 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_1_down', sim - 0.02)))
-            l2 = [x for x in l2 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L2: " +str(l2))
-            l3 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all('enemy/fleet_2_down', sim - 0.02)))
-            l3 = [x for x in l3 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L3: " +str(l3))
-            l4 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all('enemy/fleet_3_up', sim - 0.035)))
-            l4 = [x for x in l4 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L4: " +str(l4))
-            l5 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all('enemy/fleet_3_down', sim - 0.035)))
-            l5 = [x for x in l5 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L5: " +str(l5))
-            l6 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1770), map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all('enemy/fleet_2_up', sim - 0.025)))
-            l6 = [x for x in l6 if (not self.filter_blacklist(x, blacklist))]
-            Logger.log_debug("L6: " +str(l6))
+            if self.use_intersection:
+                base_region_type = Region(60, 60, 100, 100)
+                base_region_level = Region(-60, -80, 100, 100)
+                single_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt1', sim - 0.04, useMask=True))
+                double_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt2', sim - 0.075, useMask=True))
+                triple_triangle = map(lambda coords: Region(coords[0].item() + base_region_type.x, coords[1].item() + base_region_type.y,
+                    base_region_type.w, base_region_type.h), Utils.find_all('enemy/enemyt3', sim - 0.075, useMask=True))
+                lv_enemies = list(map(lambda coords: Region(coords[0].item() + base_region_level.x, coords[1].item() + base_region_level.y,
+                    base_region_level.w, base_region_level.h), Utils.find_all('enemy/enemylv', sim - 0.04, useMask=True)))
+                t1_enemies = []
+                for st in single_triangle:
+                    t1_enemies.extend(map(st.intersection, lv_enemies))
+                t1_enemies = filter(None, t1_enemies)
+                t2_enemies = []
+                for dt in double_triangle:
+                    t2_enemies.extend(map(dt.intersection, lv_enemies))
+                t2_enemies = filter(None, t2_enemies)
+                t3_enemies = []
+                for tt in triple_triangle:
+                    t3_enemies.extend(map(tt.intersection, lv_enemies))
+                t3_enemies = filter(None, t3_enemies)
+
+                intersections = []
+                intersections.extend(t1_enemies)
+                intersections.extend(t2_enemies)
+                intersections.extend(t3_enemies)
+                # filter duplicate intersections by intersecting them
+                filtered_intersections = []
+                while intersections:
+                    region = intersections.pop(0)
+                    new_intersections = []
+                    for item in intersections:
+                        res = region.intersection(item)
+                        if res:
+                            region = res
+                        else:
+                            new_intersections.append(item)
+                    intersections = new_intersections
+                    filtered_intersections.append(region)
+                enemies_coords = map(Region.get_center, filtered_intersections)
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    enemies_coords = [x for x in enemies_coords if (not p_region.contains(x))]
+
+                self.enemies_list = [x for x in enemies_coords if (not self.filter_blacklist(x, blacklist))]
+
+            else:
+                l1 = list(map(lambda x:[x[0] - 3, x[1] - 27], Utils.find_all_with_resize('enemy/fleet_level', sim - 0.025, useMask=True)))
+                Logger.log_debug("L1: " +str(l1))
+                l2 = list(map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_1_down', sim - 0.02)))
+                Logger.log_debug("L2: " +str(l2))
+                l3 = list(map(lambda x:[x[0] + 75, x[1] + 90], Utils.find_all_with_resize('enemy/fleet_2_down', sim - 0.02)))
+                Logger.log_debug("L3: " +str(l3))
+                l4 = list(map(lambda x:[x[0] + 75, x[1] + 125], Utils.find_all_with_resize('enemy/fleet_3_up', sim - 0.035)))
+                Logger.log_debug("L4: " +str(l4))
+                l5 = list(map(lambda x:[x[0] + 75, x[1] + 100], Utils.find_all_with_resize('enemy/fleet_3_down', sim - 0.035)))
+                Logger.log_debug("L5: " +str(l5))
+                l6 = list(map(lambda x:[x[0] + 75, x[1] + 110], Utils.find_all_with_resize('enemy/fleet_2_up', sim - 0.025)))
+                Logger.log_debug("L6: " +str(l6))
+                enemies_coords = l1 + l2 + l3 + l4 + l5 + l6
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    enemies_coords = [x for x in enemies_coords if (not p_region.contains(x))]
+                self.enemies_list = [x for x in enemies_coords if (not self.filter_blacklist(x, blacklist))]
 
             if self.config.combat['siren_elites']:
                 l7 = Utils.find_siren_elites()
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    l7 = [x for x in l7 if (not p_region.contains(x))]
                 l7 = [x for x in l7 if (not self.filter_blacklist(x, blacklist))]
-                Logger.log_debug("L7: " +str(l7))
-                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6 + l7
-            else:
-                self.enemies_list = l1 + l2 + l3 + l4 + l5 + l6
+                Logger.log_debug("L7 " +str(l7))
+                self.enemies_list.extend(l7)
 			
             sim -= 0.005
 
         if filter_coordinates:
-            self.enemies_list = Utils.filter_similar_coords(self.enemies_list)
+            self.enemies_list = Utils.filter_similar_coords(self.enemies_list, distance=67)
         return self.enemies_list
 
     def get_mystery_nodes(self, blacklist=[], boss=False):
@@ -789,7 +834,10 @@ class CombatModule(object):
             while not self.mystery_nodes_list and sim > 0.93:
                 Utils.update_screen()
 
-                l1 = filter(lambda x:(x[1] > 242 and x[1] < 1070 and x[0] > 180 and x[0] < 955) or (x[1] > 160 and x[1] < 938 and x[0] > 550 and x[0] < 1790), map(lambda x:[x[0], x[1] + 140], Utils.find_all('combat/question_mark', sim)))
+                l1 = list(map(lambda x:[x[0], x[1] + 140], Utils.find_all_with_resize('combat/question_mark', sim)))
+                # filter coordinates inside prohibited regions
+                for p_region in self.prohibited_region.values():
+                    l1 = [x for x in l1 if (not p_region.contains(x))]
                 l1 = [x for x in l1 if (not self.filter_blacklist(x, blacklist))]
 
                 self.mystery_nodes_list = l1
@@ -802,7 +850,7 @@ class CombatModule(object):
 
     def filter_blacklist(self, coord, blacklist):
         for y in blacklist:
-            if abs(coord[0] - y[0]) < 40 and abs(coord[1] - y[1]) < 40:
+            if abs(coord[0] - y[0]) < 65 and abs(coord[1] - y[1]) < 65:
                 return True
         return False
 
