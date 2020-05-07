@@ -1,7 +1,9 @@
 import configparser
 import sys
+import re
 from copy import deepcopy
 from util.logger import Logger
+import util.config_consts
 
 
 class Config(object):
@@ -69,7 +71,8 @@ class Config(object):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         self.network['service'] = config.get('Network', 'Service')
-        self.screenshot['useAScreenCap'] = config.getboolean('Screenshot', 'useAScreenCap')
+        self._read_screenshot(config)
+
         self.assets['server'] = config.get('Assets', 'Server')
 
         if config.getboolean('Updates', 'Enabled'):
@@ -122,6 +125,19 @@ class Config(object):
                 Logger.log_warning("Config change detected. Hot-reloading.")
                 self.changed = True
 
+    def _read_screenshot(self, config):
+        """Method to parse the Updates settings of the passed in config.
+            Args:
+                config (ConfigParser): ConfigParser instance
+        """
+
+        consts = util.config_consts.UtilConsts.ScreenCapMode
+        self.screenshot['mode'] = self._validate_list(config.get('Screenshot', 'Mode'), min_len=1, max_len=1,
+                                                      valid_vals=['SCREENCAP_PNG', 'SCREENCAP_RAW', 'ASCREENCAP'],
+                                                      map_vals=[consts.SCREENCAP_PNG, consts.SCREENCAP_RAW,
+                                                                consts.ASCREENCAP],
+                                                      cast=lambda x: x.upper())[0]
+
     def _read_updates(self, config):
         """Method to parse the Updates settings of the passed in config.
         Args:
@@ -158,6 +174,10 @@ class Config(object):
             config (ConfigParser): ConfigParser instance
         """
         self.dorm['enabled'] = config.getboolean('Headquarters', 'Dorm')
+        if self.dorm['enabled']:
+            self.dorm['AvailableSupplies'] = self._validate_list(config.get('Headquarters', 'AvailableSupplies'),
+                                                                 valid_vals=[1000, 2000, 3000, 5000, 10000, 20000],
+                                                                 min_len=1, max_len=6, cast=int, unique=True)
         self.academy['enabled'] = config.getboolean('Headquarters', 'Academy')
         if self.academy['enabled']:
             self.academy['skill_book_tier'] = self.try_cast_to_int(config.get('Headquarters', 'SkillBookTier'))
@@ -218,7 +238,8 @@ class Config(object):
             self.ok = False
 
         if not self.combat['enabled'] and not self.commissions['enabled'] and not self.enhancement['enabled'] \
-           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.research['enabled'] and not self.events['enabled']:
+           and not self.missions['enabled'] and not self.retirement['enabled'] and not self.research['enabled'] \
+            and not self.events['enabled'] and not self.dorm['enabled'] and not self.academy['enabled']:
             Logger.log_error("All modules are disabled, consider checking your config.")
             self.ok = False
 
@@ -302,3 +323,24 @@ class Config(object):
         """
         for key in config:
             setattr(self, key, config['key'])
+
+    def _validate_list(self, val, min_len=None, max_len=None, valid_vals=None, map_vals=None, cast=None, unique=False):
+        s_list = re.split(r'\s*,\s*|\s+', val)
+
+        if min_len is not None and len(s_list) < min_len:
+            raise ValueError()
+        if max_len is not None and len(s_list) > max_len:
+            raise ValueError()
+        if s_list is not None:
+            for i in range(len(s_list)):
+                s_list[i] = cast(s_list[i])
+        if valid_vals is not None:
+            for v in s_list:
+                if v not in valid_vals:
+                    raise ValueError()
+                if map_vals is not None:
+                    s_list[i] = map_vals[valid_vals.index(s_list[i])]
+        if unique and len(set(s_list)) != len(s_list):
+            raise ValueError()
+
+        return s_list

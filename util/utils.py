@@ -1,6 +1,8 @@
 import cv2
 import numpy
 import time
+import struct
+import os
 import lz4.block
 from imutils import contours, grab_contours
 from datetime import datetime, timedelta
@@ -8,7 +10,9 @@ from random import uniform, gauss, randint
 from scipy import spatial
 from util.adb import Adb
 from util.logger import Logger
+from util.config_consts import UtilConsts
 from threading import Thread
+
 
 class Region(object):
     x, y, w, h = 0, 0, 0, 0
@@ -41,8 +45,9 @@ class Region(object):
         valid_y = (self.y - tolerance, self.y + tolerance)
         valid_w = (self.w - tolerance, self.w + tolerance)
         valid_h = (self.h - tolerance, self.h + tolerance)
-        return (valid_x[0] <= region.x <= valid_x[1]  and valid_y[0] <= region.y <= valid_y[1] and
-            valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
+        return (valid_x[0] <= region.x <= valid_x[1] and valid_y[0] <= region.y <= valid_y[1] and
+                valid_w[0] <= region.w <= valid_w[1] and valid_h[0] <= region.h <= valid_h[1])
+
 
     def intersection(self, other):
         """Checks if there is an intersection between the two regions,
@@ -51,7 +56,7 @@ class Region(object):
 
         Args:
             other (Region): The region to intersect with.
-        
+
         Returns:
             intersection (Region) or None.
         """
@@ -70,10 +75,9 @@ class Region(object):
 
     def contains(self, coords):
         """Checks if the specified coordinates are inside the region.
-
         Args:
             coords (list or tuple of two elements): x and y coordinates.
-        
+
         Returns:
             (bool): whether the point is inside the region.
         """
@@ -83,13 +87,42 @@ screen = None
 last_ocr = ''
 bytepointer = 0
 
-class Utils(object):
 
+class Utils(object):
+    screen = None
+    color_screen = None
     small_boss_icon = False
+    screencap_mode = None
+
     DEFAULT_SIMILARITY = 0.95
     assets = ''
     locations = ()
-    useAScreenCap = False
+
+    @classmethod
+    def init_screencap_mode(cls,mode):
+        consts = UtilConsts.ScreenCapMode
+
+        cls.screencap_mode = mode
+
+        if cls.screencap_mode == consts.ASCREENCAP:
+            # Prepare for ascreencap, push the required libraries
+            Adb.exec_out('rm /data/local/tmp/ascreencap')
+            cpuArc = Adb.exec_out('getprop ro.product.cpu.abi').decode('utf-8').strip()
+            sdkVer = int(Adb.exec_out('getprop ro.build.version.sdk').decode('utf-8').strip())
+            ascreencaplib = 'ascreencap_{}'.format(cpuArc)
+            if sdkVer in range(21, 26) and os.path.isfile(ascreencaplib):
+                Adb.cmd('push {} /data/local/tmp/ascreencap'.format(ascreencaplib))
+            else:
+                Logger.log_warning(
+                    'No suitable version of aScreenCap lib is available locally, using ascreencap_local...')
+                if os.path.isfile('ascreencap_local'):
+                    Adb.cmd('push ascreencap_local /data/local/tmp/ascreencap')
+                else:
+                    Logger.log_error(
+                        'File "ascreencap_local" not found. Please download the appropriate version of aScreenCap for your device from github.com/ClnViewer/Android-fast-screen-capture and save it as "ascreencap_local"')
+                    Logger.log_warning('Since aScreenCap is not ready, falling back to normal adb screencap')
+                    Utils.useAScreenCap = False
+            Adb.shell('chmod 0777 /data/local/tmp/ascreencap')
 
     @staticmethod
     def reposition_byte_pointer(byteArray):
@@ -137,34 +170,68 @@ class Utils(object):
             flex = base if flex is None else flex
             time.sleep(uniform(base, base + flex))
 
-    @staticmethod
-    def update_screen():
+    @classmethod
+    def update_screen(cls):
         """Uses ADB to pull a screenshot of the device and then read it via CV2
-        and then returns the read image. The image is in a grayscale format.
+        and then stores the images in grayscale and color to screen and color_screen, respectively.
 
         Returns:
             image: A CV2 image object containing the current device screen.
         """
+        consts = UtilConsts.ScreenCapMode
+
         global screen
         screen = None
-        while screen is None:
+        color_screen = None
+        while color_screen is None:
             if Adb.legacy:
-                screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8),0)
-            elif not Utils.useAScreenCap:
-                screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 0)
+                color_screen = cv2.imdecode(
+                    numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"), dtype=numpy.uint8),
+                    cv2.IMREAD_COLOR)
             else:
-                start_time = time.perf_counter()
-                raw_compressed_data = Utils.reposition_byte_pointer(Adb.exec_out('/data/local/tmp/ascreencap --pack 2 --stdout'))
-                compressed_data_header = numpy.frombuffer(raw_compressed_data[0:20], dtype=numpy.uint32)
-                if compressed_data_header[0] != 828001602:
-                    compressed_data_header = compressed_data_header.byteswap()
+                if cls.screencap_mode == consts.SCREENCAP_PNG:
+                    color_screen = cv2.imdecode(numpy.frombuffer(Adb.exec_out('screencap -p'), dtype=numpy.uint8),
+                                                cv2.IMREAD_COLOR)
+                elif cls.screencap_mode == consts.SCREENCAP_RAW:
+                    pixel_size = 4
+
+                    byte_arr = Adb.exec_out('screencap')
+                    header_format = 'III'
+                    header_size = struct.calcsize(header_format)
+                    if len(byte_arr) < header_size:
+                        continue
+                    header = struct.unpack(header_format, byte_arr[:header_size])
+                    width = header[0]
+                    height = header[1]
+                    if len(byte_arr) != header_size + width * height * pixel_size:
+                        continue
+                    tmp = numpy.frombuffer(byte_arr, dtype=numpy.uint8, count=width * height * 4, offset=header_size)
+                    rgb_img = tmp.reshape((height, width, -1))
+                    color_screen = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
+                elif cls.screencap_mode == consts.ASCREENCAP:
+                    start_time = time.perf_counter()
+                    raw_compressed_data = Utils.reposition_byte_pointer(
+                        Adb.exec_out('/data/local/tmp/ascreencap --pack 2 --stdout'))
+                    compressed_data_header = numpy.frombuffer(raw_compressed_data[0:20], dtype=numpy.uint32)
                     if compressed_data_header[0] != 828001602:
-                        Logger.log_error('If error persists, disable aScreenCap and report traceback')
-                        raise Exception('aScreenCap header verification failure, corrupted image received. HEADER IN HEX = {}'.format(compressed_data_header.tobytes().hex()))
-                uncompressed_data_size = compressed_data_header[1].item()
-                screen = cv2.imdecode(numpy.frombuffer(lz4.block.decompress(raw_compressed_data[20:], uncompressed_size=uncompressed_data_size), dtype=numpy.uint8), 0)
-                elapsed_time = time.perf_counter() - start_time
-                Logger.log_debug("aScreenCap took {} ms to complete.".format('%.2f'%(elapsed_time * 1000)))
+                        compressed_data_header = compressed_data_header.byteswap()
+                        if compressed_data_header[0] != 828001602:
+                            Logger.log_error('If error persists, disable aScreenCap and report traceback')
+                            raise Exception(
+                                'aScreenCap header verification failure, corrupted image received. HEADER IN HEX = {}'.format(
+                                    compressed_data_header.tobytes().hex()))
+                    uncompressed_data_size = compressed_data_header[1].item()
+                    color_screen = cv2.imdecode(numpy.frombuffer(
+                        lz4.block.decompress(raw_compressed_data[20:], uncompressed_size=uncompressed_data_size),
+                        dtype=numpy.uint8), cv2.IMREAD_COLOR)
+                    elapsed_time = time.perf_counter() - start_time
+                    Logger.log_debug("aScreenCap took {} ms to complete.".format('%.2f' % (elapsed_time * 1000)))
+                else:
+                    raise Exception('Unknown screencap mode')
+
+            screen = cv2.cvtColor(color_screen, cv2.COLOR_BGR2GRAY)
+            cls.color_screen = color_screen
+            cls.screen = screen
 
     @classmethod
     def wait_update_screen(cls, time=None):
@@ -190,7 +257,8 @@ class Utils(object):
         color_screen = None
         while color_screen is None:
             if Adb.legacy:
-                color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"),dtype=numpy.uint8), 1)
+                color_screen = cv2.imdecode(
+                    numpy.fromstring(Adb.exec_out(r"screencap -p | sed s/\r\n/\n/"), dtype=numpy.uint8), 1)
             else:
                 color_screen = cv2.imdecode(numpy.fromstring(Adb.exec_out('screencap -p'), dtype=numpy.uint8), 1)
         return color_screen
@@ -228,10 +296,10 @@ class Utils(object):
         # mask area of no interest, effectively creating a roi
         roi = numpy.full((image.shape[0], image.shape[1]), 0, dtype=numpy.uint8)
         if "rarity" in categories:
-            cv2.rectangle(roi, (410, 647), (1835, 737), color=(255,255,255), thickness=-1)
+            cv2.rectangle(roi, (410, 647), (1835, 737), color=(255, 255, 255), thickness=-1)
         if "extra" in categories:
-            cv2.rectangle(roi, (410, 758), (1835, 847), color=(255,255,255), thickness=-1)
-        
+            cv2.rectangle(roi, (410, 758), (1835, 847), color=(255, 255, 255), thickness=-1)
+
         # preparing the ends of the interval of blue colors allowed, BGR format
         lower_blue = numpy.array([132, 97, 66], dtype=numpy.uint8)
         upper_blue = numpy.array([207, 142, 92], dtype=numpy.uint8)
@@ -254,12 +322,12 @@ class Utils(object):
             perimeter = cv2.arcLength(c, True)
             # approximates perimeter to a polygon with the specified precision
             approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
-    
+
             if len(approx) == 4:
                 # if approx is a rectangle, get bounding box
                 x, y, w, h = cv2.boundingRect(approx)
                 # print values
-                Logger.log_debug("Region x:{}, y:{}, w:{}, h:{}".format(x,y,w,h))
+                Logger.log_debug("Region x:{}, y:{}, w:{}, h:{}".format(x, y, w, h))
                 # appends to regions' list
                 regions.append(Region(x, y, w, h))
 
@@ -277,7 +345,7 @@ class Utils(object):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
         return
-    
+
     @staticmethod
     def draw_region(screen, region, color, thickness):
         """Method which draws a region (a rectangle) on the image (screen) passed as argument.
@@ -287,7 +355,7 @@ class Utils(object):
             region (Region): rectangle which needs to be drawn.
             color (tuple): specifiy the color of the rectangle's lines.
             thickness (int): specify the thickness of the rectangle's lines (-1 for it to be filled).
-        
+
         See cv2.rectangle() docs.
         """
         cv2.rectangle(screen, (region.x, region.y), (region.x+region.w, region.y+region.h), color=color, thickness=thickness)
@@ -299,7 +367,7 @@ class Utils(object):
         """
         text = []
 
-        crop = screen[y:y+h, x:x+w]
+        crop = screen[y:y + h, x:x + w]
         crop = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         thresh = cv2.threshold(crop, 0, 255, cv2.THRESH_OTSU)[1]
 
@@ -319,9 +387,10 @@ class Utils(object):
 
             width = round(abs((50 - col)) / 2) + 5
             height = round(abs((94 - row)) / 2) + 5
-            resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
+            resized = cv2.copyMakeBorder(roi, top=height, bottom=height, left=width, right=width,
+                                         borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
-            for x in range(0,10):
+            for x in range(0, 10):
                 template = cv2.imread("assets/numbers/{}.png".format(x), 0)
 
                 result = cv2.matchTemplate(resized, template, cv2.TM_CCOEFF_NORMED)
@@ -369,22 +438,28 @@ class Utils(object):
         return
 
     @classmethod
-    def find(cls, image, similarity=DEFAULT_SIMILARITY):
+    def find(cls, image, similarity=DEFAULT_SIMILARITY, color=False):
         """Finds the specified image on the screen
 
         Args:
             image (string): [description]
             similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
                 Percentage in similarity that the image should at least match.
+            color (boolean): find the image in color screen
 
         Returns:
             Region: region object containing the location and size of the image
         """
-        template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
-        width, height = template.shape[::-1]
-        match = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        if color:
+            template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), cv2.IMREAD_COLOR)
+            match = cv2.matchTemplate(cls.color_screen, template, cv2.TM_CCOEFF_NORMED)
+        else:
+            template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
+            match = cv2.matchTemplate(cls.screen, template, cv2.TM_CCOEFF_NORMED)
+
+        height, width = template.shape[:2]
         value, location = cv2.minMaxLoc(match)[1], cv2.minMaxLoc(match)[3]
-        if (value >= similarity):
+        if value >= similarity:
             return Region(location[0], location[1], width, height)
         return None
 
@@ -422,8 +497,8 @@ class Utils(object):
             lowerEnd = 0.4
             upperEnd = 0.6
 
-        # preparing interpolation methods        
-        middle_range = (upperEnd + lowerEnd)/2.0
+        # preparing interpolation methods
+        middle_range = (upperEnd + lowerEnd) / 2.0
         if lowerEnd < 1 and upperEnd > 1 and middle_range == 1:
             l_interpolation = cv2.INTER_AREA
             u_interpolation = cv2.INTER_CUBIC
@@ -439,7 +514,7 @@ class Utils(object):
 
         results_list = []
         count = 0
-        loop_limiter = (middle_range - lowerEnd)*100
+        loop_limiter = (middle_range - lowerEnd) * 100
 
         thread_list = []
         while (upperEnd > lowerEnd) and (count < loop_limiter):
@@ -477,7 +552,7 @@ class Utils(object):
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
-        
+
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
@@ -488,7 +563,7 @@ class Utils(object):
     @classmethod
     def find_all_with_resize(cls, image, similarity=DEFAULT_SIMILARITY, useMask=False):
         """Finds all locations of the image at default size on the screen.
-        If nothing is found, the method proceeds to resize the image within the 
+        If nothing is found, the method proceeds to resize the image within the
         scaling range of (0.8, 1.2) with a step interval of 0.2 and repeats
         the template matching operation for each resized images.
 
@@ -511,7 +586,7 @@ class Utils(object):
         else:
             comparison_method = cv2.TM_CCOEFF_NORMED
             mask = None
-        
+
         template = cv2.imread('assets/{}/{}.png'.format(cls.assets, image), 0)
         match = cv2.matchTemplate(screen, template, comparison_method, mask=mask)
         cls.locations = numpy.where(match >= similarity)
@@ -533,16 +608,16 @@ class Utils(object):
     @classmethod
     def find_siren_elites(cls):
         color_screen = cls.get_color_screen()
-        
+
         image = cv2.cvtColor(color_screen, cv2.COLOR_BGR2HSV)
-        
+
         # We use this primarily to pick out elites from event maps. Depending on the event, this may need to be updated with additional masks.
         lower_red = numpy.array([170,100,180])
         upper_red = numpy.array([180,255,255])
         mask = cv2.inRange(image, lower_red, upper_red)
 
         ret, thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)
-        
+
         # Build a structuring element to combine nearby contours together.
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
@@ -550,7 +625,7 @@ class Utils(object):
         cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = grab_contours(cnts)
         contours = list(filter(lambda x: cv2.contourArea(x) > 3000, contours))
-        
+
         locations = []
         for contour in contours:
             hull = cv2.convexHull(contour)
@@ -560,7 +635,7 @@ class Utils(object):
             approx = cv2.approxPolyDP(hull, 0.04 * cv2.arcLength(contour, True), True)
             bound_x, bound_y, width, height = cv2.boundingRect(approx)
             aspect_ratio = width / float(height)
-    
+
             # filter out non-Siren matches (non-squares)
             if len(approx) == 4 and 170 <= width <= 230 and 80 <= height <= 180:
                 locations.append([x, y])
@@ -570,7 +645,7 @@ class Utils(object):
     @classmethod
     def match_resize(cls, results_list, image, scale, comparison_method, similarity=DEFAULT_SIMILARITY, useMask=False, mask=None):
         template_resize = cv2.resize(image, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
-        if useMask: 
+        if useMask:
             mask_resize = cv2.resize(mask, None, fx = scale, fy = scale, interpolation = cv2.INTER_NEAREST)
         else:
             mask_resize = None
@@ -626,18 +701,19 @@ class Utils(object):
         cls.update_screen()
 
     @classmethod
-    def find_and_touch(cls, image, similarity=DEFAULT_SIMILARITY):
+    def find_and_touch(cls, image, similarity=DEFAULT_SIMILARITY, color=False):
         """Finds the image on the screen and touches it if it exists
 
         Args:
             image (string): Name of the image.
             similarity (float, optional): Defaults to DEFAULT_SIMILARITY.
                 Percentage in similarity that the image should at least match.
+            color (boolean): find the image in color screen
 
         Returns:
             bool: True if the image was found and touched, false otherwise
         """
-        region = cls.find(image, similarity)
+        region = cls.find(image, similarity, color)
         if region is not None:
             cls.touch_randomly(region)
             return True
@@ -709,4 +785,21 @@ class Utils(object):
             in the list of coordinates to the specified coordinate as well the
             index of where it is in the list of coordinates
         """
-        return spatial.cKDTree(coords).query(coord)
+        return spatial.KDTree(coords).query(coord)
+
+    @classmethod
+    def get_region_color_average(cls, region, hsv=True):
+        """
+        Get the average color in the region
+        :param region: the region to average the color
+        :param hsv: return color in HSV if true. BGR otherwise.
+        :return:  BGR or HSV color
+        """
+        crop = cls.color_screen[region.y:region.y + region.h, region.x:region.x + region.w]
+        bgr_avg_color = numpy.average(crop, axis=(0, 1)).astype(numpy.uint8)
+        bgr_avg_color = numpy.expand_dims(bgr_avg_color, axis=(0, 1))
+        if hsv:
+            hsv_avg_color = cv2.cvtColor(bgr_avg_color, cv2.COLOR_BGR2HSV)[0, 0, :]
+            return hsv_avg_color
+        else:
+            return bgr_avg_color

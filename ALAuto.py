@@ -203,27 +203,8 @@ if adb.init():
 
     Utils.assets = config.assets['server']
 
-    # aScreenCap init
-    useAScreenCap = config.screenshot['useAScreenCap']
-    Utils.useAScreenCap = useAScreenCap
-
-    if useAScreenCap:
-        # Prepare for ascreencap, push the required libraries
-        Adb.exec_out('rm /data/local/tmp/ascreencap')
-        cpuArc = Adb.exec_out('getprop ro.product.cpu.abi').decode('utf-8').strip()
-        sdkVer = int(Adb.exec_out('getprop ro.build.version.sdk').decode('utf-8').strip())
-        ascreencaplib = 'ascreencap_{}'.format(cpuArc)
-        if sdkVer in range(21, 26) and os.path.isfile(ascreencaplib):
-            Adb.cmd('push {} /data/local/tmp/ascreencap'.format(ascreencaplib))
-        else:
-            Logger.log_warning('No suitable version of aScreenCap lib is available locally, using ascreencap_local...')
-            if os.path.isfile('ascreencap_local'):
-                Adb.cmd('push ascreencap_local /data/local/tmp/ascreencap')
-            else:
-                Logger.log_error('File "ascreencap_local" not found. Please download the appropriate version of aScreenCap for your device from github.com/ClnViewer/Android-fast-screen-capture and save it as "ascreencap_local"')
-                Logger.log_warning('Since aScreenCap is not ready, falling back to normal adb screencap')
-                Utils.useAScreenCap = False
-        Adb.shell('chmod 0777 /data/local/tmp/ascreencap')
+    # screencap init
+    Utils.init_screencap_mode(config.screenshot['mode'])
 
 else:
     Logger.log_error('Unable to connect to the service.')
