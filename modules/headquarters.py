@@ -35,20 +35,20 @@ class HeadquartersModule(object):
             'cancel_lesson_button': Region(1345, 900, 170, 60)
         }
 
-        self.supply_region = list()
-        self.supply_order = list()
-        self.supply_whiteout_threshold = 220
-        self.start_feed_threshold = 0.2
-        self.stop_feed_threshold = 0.8
+        if self.config.dorm['enabled']:
+            self.supply_region = list()
+            self.supply_order = list()
+            self.supply_whiteout_threshold = 220
+            self.start_feed_threshold = 0.2
+            self.stop_feed_threshold = 0.8
 
-        gap = 235
-        supplies = [1000, 2000, 3000, 5000, 10000, 20000]
+            gap = 235
+            supplies = [1000, 2000, 3000, 5000, 10000, 20000]
 
-        for i in range(6):
-            self.supply_region.append(Region(450 + i * gap, 520, 100, 100))
-        for val in config.dorm['AvailableSupplies']:
-            self.supply_order.append(supplies.index(val))
-
+            for i in range(6):
+                self.supply_region.append(Region(450 + i * gap, 520, 100, 100))
+            for val in config.dorm['AvailableSupplies']:
+                self.supply_order.append(supplies.index(val))
 
 
     def hq_logic_wrapper(self):
