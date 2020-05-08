@@ -190,9 +190,13 @@ class Utils(object):
                     cv2.IMREAD_COLOR)
             else:
                 if cls.screencap_mode == consts.SCREENCAP_PNG:
+                    start_time = time.perf_counter()
                     color_screen = cv2.imdecode(numpy.frombuffer(Adb.exec_out('screencap -p'), dtype=numpy.uint8),
                                                 cv2.IMREAD_COLOR)
+                    elapsed_time = time.perf_counter() - start_time
+                    Logger.log_debug("SCREENCAP_PNG took {} ms to complete.".format('%.2f' % (elapsed_time * 1000)))
                 elif cls.screencap_mode == consts.SCREENCAP_RAW:
+                    start_time = time.perf_counter()
                     pixel_size = 4
 
                     byte_arr = Adb.exec_out('screencap')
@@ -208,6 +212,8 @@ class Utils(object):
                     tmp = numpy.frombuffer(byte_arr, dtype=numpy.uint8, count=width * height * 4, offset=header_size)
                     rgb_img = tmp.reshape((height, width, -1))
                     color_screen = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
+                    elapsed_time = time.perf_counter() - start_time
+                    Logger.log_debug("SCREENCAP_RAW took {} ms to complete.".format('%.2f' % (elapsed_time * 1000)))
                 elif cls.screencap_mode == consts.ASCREENCAP:
                     start_time = time.perf_counter()
                     raw_compressed_data = Utils.reposition_byte_pointer(
@@ -785,7 +791,7 @@ class Utils(object):
             in the list of coordinates to the specified coordinate as well the
             index of where it is in the list of coordinates
         """
-        return spatial.KDTree(coords).query(coord)
+        return spatial.cKDTree(coords).query(coord)
 
     @classmethod
     def get_region_color_average(cls, region, hsv=True):
